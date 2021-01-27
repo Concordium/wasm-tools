@@ -63,7 +63,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str;
 
-pub use config::{Config, DefaultConfig, SwarmConfig};
+pub use config::{Config, DefaultConfig, SwarmConfig, InterpreterConfig};
 
 /// A pseudo-random WebAssembly module.
 ///
@@ -283,8 +283,6 @@ enum EntityType {
 enum ValType {
     I32,
     I64,
-    F32,
-    F64,
     FuncRef,
     ExternRef,
 }
@@ -468,8 +466,6 @@ enum Instruction {
     // Memory instructions.
     I32Load(MemArg),
     I64Load(MemArg),
-    F32Load(MemArg),
-    F64Load(MemArg),
     I32Load8_S(MemArg),
     I32Load8_U(MemArg),
     I32Load16_S(MemArg),
@@ -482,8 +478,6 @@ enum Instruction {
     I64Load32_U(MemArg),
     I32Store(MemArg),
     I64Store(MemArg),
-    F32Store(MemArg),
-    F64Store(MemArg),
     I32Store8(MemArg),
     I32Store16(MemArg),
     I64Store8(MemArg),
@@ -499,8 +493,6 @@ enum Instruction {
     // Numeric instructions.
     I32Const(i32),
     I64Const(i64),
-    F32Const(f32),
-    F64Const(f64),
     I32Eqz,
     I32Eq,
     I32Neq,
@@ -523,18 +515,6 @@ enum Instruction {
     I64LeU,
     I64GeS,
     I64GeU,
-    F32Eq,
-    F32Neq,
-    F32Lt,
-    F32Gt,
-    F32Le,
-    F32Ge,
-    F64Eq,
-    F64Neq,
-    F64Lt,
-    F64Gt,
-    F64Le,
-    F64Ge,
     I32Clz,
     I32Ctz,
     I32Popcnt,
@@ -571,72 +551,14 @@ enum Instruction {
     I64ShrU,
     I64Rotl,
     I64Rotr,
-    F32Abs,
-    F32Neg,
-    F32Ceil,
-    F32Floor,
-    F32Trunc,
-    F32Nearest,
-    F32Sqrt,
-    F32Add,
-    F32Sub,
-    F32Mul,
-    F32Div,
-    F32Min,
-    F32Max,
-    F32Copysign,
-    F64Abs,
-    F64Neg,
-    F64Ceil,
-    F64Floor,
-    F64Trunc,
-    F64Nearest,
-    F64Sqrt,
-    F64Add,
-    F64Sub,
-    F64Mul,
-    F64Div,
-    F64Min,
-    F64Max,
-    F64Copysign,
     I32WrapI64,
-    I32TruncF32S,
-    I32TruncF32U,
-    I32TruncF64S,
-    I32TruncF64U,
     I64ExtendI32S,
     I64ExtendI32U,
-    I64TruncF32S,
-    I64TruncF32U,
-    I64TruncF64S,
-    I64TruncF64U,
-    F32ConvertI32S,
-    F32ConvertI32U,
-    F32ConvertI64S,
-    F32ConvertI64U,
-    F32DemoteF64,
-    F64ConvertI32S,
-    F64ConvertI32U,
-    F64ConvertI64S,
-    F64ConvertI64U,
-    F64PromoteF32,
-    I32ReinterpretF32,
-    I64ReinterpretF64,
-    F32ReinterpretI32,
-    F64ReinterpretI64,
     I32Extend8S,
     I32Extend16S,
     I64Extend8S,
     I64Extend16S,
     I64Extend32S,
-    I32TruncSatF32S,
-    I32TruncSatF32U,
-    I32TruncSatF64S,
-    I32TruncSatF64U,
-    I64TruncSatF32S,
-    I64TruncSatF32U,
-    I64TruncSatF64S,
-    I64TruncSatF64U,
     TypedSelect(ValType),
     RefNull(ValType),
     RefIsNull,
@@ -674,8 +596,6 @@ where
         self.config = C::arbitrary(u)?;
         self.valtypes.push(ValType::I32);
         self.valtypes.push(ValType::I64);
-        self.valtypes.push(ValType::F32);
-        self.valtypes.push(ValType::F64);
         if self.config.reference_types_enabled() {
             self.valtypes.push(ValType::ExternRef);
             self.valtypes.push(ValType::FuncRef);
@@ -1409,8 +1329,6 @@ where
                     Ok(match ty {
                         ValType::I32 => Instruction::I32Const(u.arbitrary()?),
                         ValType::I64 => Instruction::I64Const(u.arbitrary()?),
-                        ValType::F32 => Instruction::F32Const(u.arbitrary()?),
-                        ValType::F64 => Instruction::F64Const(u.arbitrary()?),
                         ValType::ExternRef => Instruction::RefNull(ValType::ExternRef),
                         ValType::FuncRef => {
                             if num_funcs > 0 && u.arbitrary()? {

@@ -399,3 +399,130 @@ impl Config for SwarmConfig {
         self.max_nesting_depth
     }
 }
+
+/// A module configuration for a Concordium smart-contract module
+#[derive(Clone, Debug, Default)]
+pub struct InterpreterConfig {
+    max_types: usize,
+    max_imports: usize,
+    max_funcs: usize,
+    max_globals: usize,
+    max_exports: usize,
+    max_element_segments: usize,
+    max_elements: usize,
+    max_data_segments: usize,
+    max_instructions: usize,
+    max_memories: usize,
+    min_uleb_size: u8,
+    max_tables: usize,
+    max_memory_pages: u32,
+    bulk_memory_enabled: bool,
+    reference_types_enabled: bool,
+    module_linking_enabled: bool,
+    max_aliases: usize,
+    max_nesting_depth: usize,
+}
+
+impl Arbitrary for InterpreterConfig {
+    fn arbitrary(u: &mut Unstructured<'_>) -> Result<Self> {
+        const MAX_MAXIMUM: usize = 1000; // TODO (MRA) adjust
+
+        let reference_types_enabled: bool = false; // TODO (MRA) ?
+        let max_tables = if reference_types_enabled { 100 } else { 1 };
+
+        Ok(InterpreterConfig {
+            max_types: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_imports: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_funcs: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_globals: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_exports: u.int_in_range(0..=MAX_MAXIMUM)?, // TODO (MRA) hardcode?
+            max_element_segments: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_elements: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_data_segments: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_instructions: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_memories: u.int_in_range(0..=100)?,
+            max_tables,
+            max_memory_pages: u.int_in_range(0..=65536)?,
+            min_uleb_size: u.int_in_range(0..=5)?,
+            bulk_memory_enabled: u.arbitrary()?,
+            reference_types_enabled,
+            module_linking_enabled: u.arbitrary()?,
+            max_aliases: u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_nesting_depth: u.int_in_range(0..=10)?,
+        })
+    }
+}
+
+impl Config for InterpreterConfig {
+    fn max_types(&self) -> usize {
+        self.max_types
+    }
+
+    fn max_imports(&self) -> usize {
+        self.max_imports
+    }
+
+    fn max_funcs(&self) -> usize {
+        self.max_funcs
+    }
+
+    fn max_globals(&self) -> usize {
+        self.max_globals
+    }
+
+    fn max_exports(&self) -> usize {
+        self.max_exports
+    }
+
+    fn max_element_segments(&self) -> usize {
+        self.max_element_segments
+    }
+
+    fn max_elements(&self) -> usize {
+        self.max_elements
+    }
+
+    fn max_data_segments(&self) -> usize {
+        self.max_data_segments
+    }
+
+    fn max_instructions(&self) -> usize {
+        self.max_instructions
+    }
+
+    fn max_memories(&self) -> usize {
+        self.max_memories
+    }
+
+    fn max_tables(&self) -> usize {
+        self.max_tables
+    }
+
+    fn max_memory_pages(&self) -> u32 {
+        self.max_memory_pages
+    }
+
+    fn min_uleb_size(&self) -> u8 {
+        self.min_uleb_size
+    }
+
+    fn bulk_memory_enabled(&self) -> bool {
+        self.bulk_memory_enabled
+    }
+
+    fn reference_types_enabled(&self) -> bool {
+        self.reference_types_enabled
+    }
+
+    fn module_linking_enabled(&self) -> bool {
+        self.module_linking_enabled
+    }
+
+    fn max_aliases(&self) -> usize {
+        self.max_aliases
+    }
+
+    fn max_nesting_depth(&self) -> usize {
+        self.max_nesting_depth
+    }
+}
