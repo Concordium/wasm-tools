@@ -17,6 +17,11 @@ where
         self.encoded().finish()
     }
 
+    /// The names of functions that are exported from this module
+    pub fn exports(&self) -> Vec<&String> {
+        self.exports.iter().map(|(str, _)| str).collect()
+    }
+
     fn encoded(&self) -> wasm_encoder::Module {
         let mut module = wasm_encoder::Module::new();
 

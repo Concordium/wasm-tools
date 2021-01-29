@@ -1,3 +1,4 @@
+#![feature(array_map)]
 //! A WebAssembly test case generator.
 //!
 //! ## Usage
@@ -52,18 +53,22 @@
 // Needed for the `instructions!` macro in `src/code_builder.rs`.
 #![recursion_limit = "256"]
 
-mod code_builder;
-mod config;
-mod encode;
-mod terminate;
-
-use crate::code_builder::CodeBuilderAllocations;
-use arbitrary::{Arbitrary, Result, Unstructured};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str;
 
-pub use config::{Config, DefaultConfig, SwarmConfig, InterpreterConfig};
+use arbitrary::{Arbitrary, Result, Unstructured};
+
+pub use config::{Config, DefaultConfig, InterpreterConfig, SwarmConfig};
+use deunicode::deunicode;
+use ValType::{I32, I64};
+
+use crate::code_builder::CodeBuilderAllocations;
+
+mod code_builder;
+mod config;
+mod encode;
+mod terminate;
 
 /// A pseudo-random WebAssembly module.
 ///
@@ -128,8 +133,10 @@ where
     /// All types locally defined in this module (available in the type index
     /// space).
     types: Vec<LocalType>,
-    /// Indices within `types` that are function types.
+    /// Indices within `types` that are (non-host) function types.
     func_types: Vec<u32>,
+    /// Indices within `types` that are host-function types.
+    host_func_types: Vec<u32>,
     /// Indices within `types` that are module types.
     module_types: Vec<u32>,
     /// Indices within `types` that are instance types.
@@ -210,7 +217,7 @@ impl<C: Config> Arbitrary for ConfiguredModule<C> {
 
 /// Same as [`Module`], but may be invalid.
 ///
-/// This module generates function bodies differnetly than `Module` to try to
+/// This module generates function bodies differently than `Module` to try to
 /// better explore wasm decoders and such.
 #[derive(Debug, Default)]
 pub struct MaybeInvalidModule {
@@ -248,10 +255,12 @@ enum Type {
     Instance(Rc<InstanceType>),
 }
 
+/// Representation of a function type
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct FuncType {
     params: Vec<ValType>,
     results: Vec<ValType>,
+    is_host_function: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -279,11 +288,16 @@ enum EntityType {
     Module(u32, Rc<ModuleType>),
 }
 
+/// Types of Wasm values
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-enum ValType {
+pub enum ValType {
+    /// 32-bit integer type
     I32,
+    /// 64-bit integer type
     I64,
+    /// Function reference type
     FuncRef,
+    /// `externref` type
     ExternRef,
 }
 
@@ -679,16 +693,7 @@ where
         self.initial_sections.push(InitialSection::Type(Vec::new()));
         arbitrary_loop(u, min, self.config.max_types() - self.types.len(), |u| {
             let ty = self.arbitrary_type(u)?;
-            self.record_type(&ty);
-            let types = match self.initial_sections.last_mut().unwrap() {
-                InitialSection::Type(list) => list,
-                _ => unreachable!(),
-            };
-            self.types.push(LocalType::Defined {
-                section: section_idx,
-                nth: types.len(),
-            });
-            types.push(ty);
+            self.add_type_to_initial_section(section_idx, ty);
             Ok(true)
         })?;
         let types = match self.initial_sections.last_mut().unwrap() {
@@ -701,9 +706,28 @@ where
         Ok(())
     }
 
+    fn add_type_to_initial_section(&mut self, section_idx: usize, ty: Type) {
+        self.record_type(&ty);
+        let types = match self.initial_sections.last_mut().unwrap() {
+            InitialSection::Type(list) => list,
+            _ => unreachable!(),
+        };
+        self.types.push(LocalType::Defined {
+            section: section_idx,
+            nth: types.len(),
+        });
+        types.push(ty);
+    }
+
     fn record_type(&mut self, ty: &Type) {
         let list = match &ty {
-            Type::Func(_) => &mut self.func_types,
+            Type::Func(ft) => {
+                if ft.is_host_function {
+                    &mut self.host_func_types
+                } else {
+                    &mut self.func_types
+                }
+            },
             Type::Module(_) => &mut self.module_types,
             Type::Instance(_) => &mut self.instance_types,
         };
@@ -722,17 +746,33 @@ where
     }
 
     fn arbitrary_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
-        let mut params = vec![];
-        let mut results = vec![];
-        arbitrary_loop(u, 0, 20, |u| {
-            params.push(self.arbitrary_valtype(u)?);
-            Ok(true)
-        })?;
-        arbitrary_loop(u, 0, 20, |u| {
-            results.push(self.arbitrary_valtype(u)?);
-            Ok(true)
-        })?;
-        Ok(Rc::new(FuncType { params, results }))
+        let mut choices: Vec<fn(&mut Unstructured, &mut ConfiguredModule<C>) -> Result<FuncType>> =
+            Vec::with_capacity(2);
+        // Adding non-host function choice
+        choices.push(|u, m| {
+            let mut params = vec![];
+            let mut results = vec![];
+            arbitrary_loop(u, 0, 20, |u| {
+                params.push(m.arbitrary_valtype(u)?);
+                Ok(true)
+            })?;
+            arbitrary_loop(u, 0, 20, |u| {
+                results.push(m.arbitrary_valtype(u)?);
+                Ok(true)
+            })?;
+            Ok(FuncType { params, results, is_host_function: false })
+        });
+        // Adding host-function choice
+        if !self.config().host_functions().is_empty() {
+            choices.push(|u, m| {
+                let hfs = m.config().host_functions();
+                let hf = u.choose(&hfs)?;
+                let ret_type = hf.result.iter().cloned().collect();
+                Ok(FuncType { params: hf.params.clone(), results: ret_type, is_host_function: true })
+            });
+        }
+        let result = u.choose(&choices)?;
+        Ok(Rc::new(result(u, self)?))
     }
 
     fn arbitrary_module_type(
@@ -843,8 +883,12 @@ where
         u.choose(&choices)?(u, self, entities)
     }
 
-    fn can_add_local_or_import_func(&self) -> bool {
+    fn can_add_local_func(&self) -> bool {
         self.func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
+    }
+
+    fn can_add_import_func(&self) -> bool {
+        self.host_func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
     }
 
     fn can_add_local_or_import_instance(&self) -> bool {
@@ -875,11 +919,11 @@ where
         let mut imports = Vec::new();
         arbitrary_loop(u, min, self.config.max_imports() - self.num_imports, |u| {
             choices.clear();
-            if self.can_add_local_or_import_func() {
+            if self.can_add_import_func() {
                 choices.push(|u, m| {
-                    let idx = *u.choose(&m.func_types)?;
+                    let idx = *u.choose(&m.host_func_types)?;
                     let ty = m.func_type(idx).clone();
-                    m.funcs.push((Some(idx), ty.clone()));
+                    m.funcs.push((Some(idx), ty.clone())); // todo (MRA) make sure to create bodies only for non-imported functions
                     Ok(EntityType::Func(idx, ty))
                 });
             }
@@ -1192,9 +1236,11 @@ where
         }
     }
 
+    // All (non-host and host) function types
     fn func_types<'a>(&'a self) -> impl Iterator<Item = (u32, &'a FuncType)> + 'a {
         self.func_types
             .iter()
+            .chain(&self.host_func_types)
             .copied()
             .map(move |type_i| (type_i, &**self.func_type(type_i)))
     }
@@ -1255,13 +1301,12 @@ where
         }
 
         arbitrary_loop(u, self.config.min_funcs(), self.config.max_funcs(), |u| {
-            if !self.can_add_local_or_import_func() {
+            if !self.can_add_local_func() {
                 return Ok(false);
             }
             let max = self.func_types.len() - 1;
             let ty = self.func_types[u.int_in_range(0..=max)?];
             self.funcs.push((Some(ty), self.func_type(ty).clone()));
-            self.num_defined_funcs += 1;
             Ok(true)
         })
     }
@@ -1830,7 +1875,7 @@ fn limited_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
     match str::from_utf8(&u.peek_bytes(size).unwrap()) {
         Ok(s) => {
             u.get_bytes(size).unwrap();
-            Ok(s.into())
+            Ok(deunicode(s.into()))
         }
         Err(e) => {
             let i = e.valid_up_to();
@@ -1839,7 +1884,7 @@ fn limited_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
                 debug_assert!(str::from_utf8(valid).is_ok());
                 str::from_utf8_unchecked(valid)
             };
-            Ok(s.into())
+            Ok(deunicode(s.into()))
         }
     }
 }

@@ -25,6 +25,7 @@ leb128 = "0.2.4"
 structopt = { version = "0.3.16", optional = true }
 wasm-encoder = { version = "0.4.0", path = "../wasm-encoder" }
 indexmap = "1.6"
+deunicode = "1.1.1"
 
 [dev-dependencies]
 criterion = "0.3.3"
