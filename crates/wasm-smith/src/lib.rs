@@ -144,8 +144,8 @@ where
 
     /// Number of imported items into this module.
     num_imports: usize, // todo (MRA) remove this and only use imported funcs because we only allow importing functions
-    /// Indices within `types` that are imported host functions
-    imported_funcs: Vec<u32>,
+    /// Names of already imported host functions
+    imported_funcs: Vec<String>,
 
     /// Number of items aliased into this module.
     num_aliases: usize,
@@ -910,22 +910,23 @@ where
         arbitrary_loop(u, min, self.config.max_imports() - self.num_imports, |u| {
             if self.can_add_import_func() {
                 let idx = u.choose(&self.host_func_types)?;
-                if !self.imported_funcs.contains(idx) {
-                    self.imported_funcs.push(*idx);
-                    let ty = self.func_type(*idx).clone();
-                    // println!("[imports] Push function with index {}", *idx);
-                    self.funcs.push((Some(*idx), ty.clone()));
-                    self.num_imports += 1;
-                    match &ty.host_function {
-                        Some(hf) =>
-                            imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), EntityType::Func(* idx, ty))),
-                        None =>
-                            panic!("Only host functions can be imported"),
+                let ty = self.func_type(*idx).clone();
+                match &ty.host_function {
+                    Some(hf) => {
+                        let hf_name = String::from(hf.name);
+                        if !self.imported_funcs.contains(&hf_name) {
+                            self.imported_funcs.push(hf_name);
+                            // println!("[imports] Push function with index {}", *idx);
+                            self.funcs.push((Some(*idx), ty.clone()));
+                            self.num_imports += 1;
+                            imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), EntityType::Func(*idx, ty)))
+                        }
                     }
+                    None =>
+                        panic!("Only host functions can be imported"),
                 }
             }
 
-            // TODO (MRA) completely remove support for any imports other than concordium host functions
             Ok(true)
         })?;
         if !imports.is_empty() || u.arbitrary()? {
