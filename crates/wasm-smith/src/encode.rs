@@ -17,9 +17,17 @@ where
         self.encoded().finish()
     }
 
-    /// The names of functions that are exported from this module
-    pub fn exports(&self) -> Vec<&String> {
-        self.exports.iter().map(|(str, _)| str).collect()
+    /// The names of functions and their types that are exported from this module
+    pub fn exports(&self) -> Vec<(&String, &Vec<ValType>, &Vec<ValType>)> {
+        self.exports.iter().flat_map(|(str, exp)| {
+            match exp {
+                Export::Func(id) => {
+                    let (_, tpe) = &self.funcs[*id as usize];
+                    Some((str, &tpe.params, &tpe.results))
+                },
+                _ => None,
+            }
+        }).collect()
     }
 
     fn encoded(&self) -> wasm_encoder::Module {

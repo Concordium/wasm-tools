@@ -6,8 +6,8 @@ use super::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct HostFunction {
-    mod_name: &'static str,
-    name: &'static str,
+    pub mod_name: &'static str,
+    pub name: &'static str,
     pub params: Vec<ValType>,
     pub result: Option<ValType>,
 }
@@ -36,6 +36,9 @@ pub trait Config: Arbitrary + Default + Clone {
         100
     }
 
+    /// The maximum number of values a function can return
+    fn max_return_values(&self) -> usize { 20 }
+
     /// The minimum number of imports to generate. Defaults to 0.
     ///
     /// Note that if the sum of the maximum function[^1], table, global and
@@ -55,7 +58,7 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// The maximum number of imports to generate. Defaults to 100.
     fn max_imports(&self) -> usize {
-        100
+        20
     }
 
     /// The minimum number of functions to generate. Defaults to 0.  This
@@ -265,11 +268,11 @@ pub trait Config: Arbitrary + Default + Clone {
         10
     }
 
-    /// Should we allow any imports apart from the specified host functions?
-    fn restrict_imports_to_host_functions(&self) -> bool { false }
-
     /// The set of admissible host functions that can be imported into the module
     fn host_functions(&self) -> Vec<HostFunction> { Vec::new() }
+
+    /// Allow arbitrary instructions?
+    fn allow_arbitrary_instr(&self) -> bool { false }
 }
 
 /// The default configuration.
@@ -335,7 +338,7 @@ impl Arbitrary for SwarmConfig {
             min_uleb_size: u.int_in_range(0..=5)?,
             bulk_memory_enabled: u.arbitrary()?,
             reference_types_enabled,
-            module_linking_enabled: u.arbitrary()?,
+            module_linking_enabled: false,
             max_aliases: u.int_in_range(0..=MAX_MAXIMUM)?,
             max_nesting_depth: u.int_in_range(0..=10)?,
         })
@@ -414,15 +417,6 @@ impl Config for SwarmConfig {
     fn max_nesting_depth(&self) -> usize {
         self.max_nesting_depth
     }
-}
-
-/// A module configuration for a Concordium smart-contract module
-#[derive(Default, Debug, Arbitrary, Clone)]
-pub struct InterpreterConfig;
-
-impl Config for InterpreterConfig {
-
-    fn restrict_imports_to_host_functions(&self) -> bool { true }
 
     fn host_functions(&self) -> Vec<HostFunction> {
 
@@ -456,4 +450,66 @@ impl Config for InterpreterConfig {
             });
         hosts.to_vec()
     }
+}
+
+/// A module configuration for a Concordium smart-contract module
+#[derive(Default, Debug, Arbitrary, Clone)]
+pub struct InterpreterConfig;
+
+impl Config for InterpreterConfig {
+
+    fn host_functions(&self) -> Vec<HostFunction> {
+
+        let hosts = [
+            ("accept", Vec::new(), Some(I32)),
+            ("simple_transfer", vec![I32, I64], Some(I32)),
+            ("send", vec![I64, I64, I32, I32, I64, I32, I32], Some(I32)),
+            ("combine_and", vec![I32, I32], Some(I32)),
+            ("combine_or", vec![I32, I32], Some(I32)),
+            ("get_parameter_size", Vec::new(), Some(I32)),
+            ("get_parameter_section", vec![I32, I32, I32], Some(I32)),
+            ("get_policy_section", vec![I32, I32, I32], Some(I32)),
+            ("log_event", vec![I32, I32], None),
+            ("load_state", vec![I32, I32, I32], Some(I32)),
+            ("write_state", vec![I32, I32, I32], Some(I32)),
+            ("resize_state", vec![I32], Some(I32)),
+            ("state_size", Vec::new(), Some(I32)),
+            ("get_init_origin", vec![I32], None),
+            ("get_receive_invoker", vec![I32], None),
+            ("get_receive_self_address", vec![I32], None),
+            ("get_receive_self_balance", Vec::new(), Some(I64)),
+            ("get_receive_sender", vec![I32], None),
+            ("get_receive_owner", vec![I32], None),
+            ("get_slot_time", Vec::new(), Some(I64)),
+        ].map(|(name, params, ret)|
+            HostFunction {
+                mod_name: "concordium",
+                name: name,
+                params: params,
+                result: ret
+            });
+        hosts.to_vec()
+    }
+
+    fn max_imports(&self) -> usize {
+        20
+    }
+
+    fn min_imports(&self) -> usize {
+        2
+    }
+
+    fn max_exports(&self) -> usize {
+        100
+    }
+
+    fn min_exports(&self) -> usize {
+        1
+    }
+
+    fn allow_start_export(&self) -> bool { false }
+
+    fn max_return_values(&self) -> usize { 1 }
+
+    fn allow_arbitrary_instr(&self) -> bool { false }
 }

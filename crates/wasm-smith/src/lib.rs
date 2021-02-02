@@ -60,10 +60,10 @@ use std::str;
 use arbitrary::{Arbitrary, Result, Unstructured};
 
 pub use config::{Config, DefaultConfig, InterpreterConfig, SwarmConfig};
-use deunicode::deunicode;
 use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;
+use crate::config::HostFunction;
 
 mod code_builder;
 mod config;
@@ -143,7 +143,9 @@ where
     instance_types: Vec<u32>,
 
     /// Number of imported items into this module.
-    num_imports: usize,
+    num_imports: usize, // todo (MRA) remove this and only use imported funcs because we only allow importing functions
+    /// Indices within `types` that are imported host functions
+    imported_funcs: Vec<u32>,
 
     /// Number of items aliased into this module.
     num_aliases: usize,
@@ -234,7 +236,7 @@ impl MaybeInvalidModule {
 impl Arbitrary for MaybeInvalidModule {
     fn arbitrary(u: &mut Unstructured) -> Result<Self> {
         let mut module = Module::default();
-        module.inner.build(u, true)?;
+        module.inner.build(u, module.inner.config.allow_arbitrary_instr())?;
         Ok(MaybeInvalidModule { module })
     }
 }
@@ -260,7 +262,7 @@ enum Type {
 struct FuncType {
     params: Vec<ValType>,
     results: Vec<ValType>,
-    is_host_function: bool,
+    host_function: Option<HostFunction>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -375,7 +377,7 @@ enum ItemKind {
 
 #[derive(Copy, Clone, Debug)]
 enum Export {
-    Func(u32),
+    Func(u32), // the index in `funcs`
     Table(u32),
     Memory(u32),
     Global(u32),
@@ -722,7 +724,7 @@ where
     fn record_type(&mut self, ty: &Type) {
         let list = match &ty {
             Type::Func(ft) => {
-                if ft.is_host_function {
+                if ft.host_function.is_some() {
                     &mut self.host_func_types
                 } else {
                     &mut self.func_types
@@ -756,11 +758,11 @@ where
                 params.push(m.arbitrary_valtype(u)?);
                 Ok(true)
             })?;
-            arbitrary_loop(u, 0, 20, |u| {
+            arbitrary_loop(u, 0, m.config.max_return_values(), |u| {
                 results.push(m.arbitrary_valtype(u)?);
                 Ok(true)
             })?;
-            Ok(FuncType { params, results, is_host_function: false })
+            Ok(FuncType { params, results, host_function: None })
         });
         // Adding host-function choice
         if !self.config().host_functions().is_empty() {
@@ -768,7 +770,7 @@ where
                 let hfs = m.config().host_functions();
                 let hf = u.choose(&hfs)?;
                 let ret_type = hf.result.iter().cloned().collect();
-                Ok(FuncType { params: hf.params.clone(), results: ret_type, is_host_function: true })
+                Ok(FuncType { params: hf.params.clone(), results: ret_type, host_function: Some(hf.clone()) })
             });
         }
         let result = u.choose(&choices)?;
@@ -891,120 +893,39 @@ where
         self.host_func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
     }
 
-    fn can_add_local_or_import_instance(&self) -> bool {
-        self.instance_types.len() > 0 && self.instances.len() < self.config.max_instances()
-    }
-
-    fn can_add_local_or_import_module(&self) -> bool {
-        self.module_types.len() > 0 && self.modules.len() < self.config.max_modules()
-    }
-
     fn can_add_local_or_import_table(&self) -> bool {
-        self.tables.len() < self.config.max_tables()
+       false// self.tables.len() < self.config.max_tables()
     }
 
     fn can_add_local_or_import_global(&self) -> bool {
-        self.globals.len() < self.config.max_globals()
+       false // self.globals.len() < self.config.max_globals()
     }
 
     fn can_add_local_or_import_memory(&self) -> bool {
-        self.memories.len() < self.config.max_memories()
+       false// self.memories.len() < self.config.max_memories()
     }
 
     fn arbitrary_imports(&mut self, min: usize, u: &mut Unstructured) -> Result<()> {
-        let mut choices: Vec<
-            fn(&mut Unstructured, &mut ConfiguredModule<C>) -> Result<EntityType>,
-        > = Vec::with_capacity(4);
-
         let mut imports = Vec::new();
         arbitrary_loop(u, min, self.config.max_imports() - self.num_imports, |u| {
-            choices.clear();
             if self.can_add_import_func() {
-                choices.push(|u, m| {
-                    let idx = *u.choose(&m.host_func_types)?;
-                    let ty = m.func_type(idx).clone();
-                    m.funcs.push((Some(idx), ty.clone())); // todo (MRA) make sure to create bodies only for non-imported functions
-                    Ok(EntityType::Func(idx, ty))
-                });
-            }
-            if self.can_add_local_or_import_module() {
-                choices.push(|u, m| {
-                    let idx = *u.choose(&m.module_types)?;
-                    let ty = m.module_type(idx).clone();
-                    m.modules.push(ty.clone());
-                    Ok(EntityType::Module(idx, ty.clone()))
-                });
-            }
-            if self.can_add_local_or_import_instance() {
-                choices.push(|u, m| {
-                    let idx = *u.choose(&m.instance_types)?;
-                    let ty = m.instance_type(idx).clone();
-                    m.instances.push(ty.clone());
-                    Ok(EntityType::Instance(idx, ty))
-                });
-            }
-            if self.can_add_local_or_import_global() {
-                choices.push(|u, m| {
-                    let ty = m.arbitrary_global_type(u)?;
-                    m.globals.push(ty.clone());
-                    Ok(EntityType::Global(ty))
-                });
-            }
-            if self.can_add_local_or_import_memory() {
-                choices.push(|u, m| {
-                    let ty = m.arbitrary_memtype(u)?;
-                    m.memories.push(ty.clone());
-                    Ok(EntityType::Memory(ty))
-                });
-            }
-            if self.can_add_local_or_import_table() {
-                choices.push(|u, m| {
-                    let ty = m.arbitrary_table_type(u)?;
-                    m.tables.push(ty.clone());
-                    Ok(EntityType::Table(ty))
-                });
-            }
-
-            if choices.is_empty() {
-                // We are out of choices. If we have not have reached the minimum yet, then we
-                // have no way to satisfy the constraint, but we follow max-constraints before
-                // the min-import constraint.
-                return Ok(false);
-            }
-
-            // Generate an arbitrary module/name pair to name this import. Note
-            // that if module-linking is enabled and `name` is present, then we
-            // might be implicitly generating an instance. If that's the case
-            // then we need to record the type of this instance.
-            let module_linking = self.config.module_linking_enabled() || self.outers.len() > 0;
-            let (module, name) =
-                unique_import_strings(1_000, &mut self.import_names, module_linking, u)?;
-            if module_linking
-                && name.is_some()
-                && self.import_names[&module].as_ref().unwrap().len() == 1
-            {
-                // This is the first time this module name is imported from, so
-                // generate a new instance type.
-                self.implicit_instance_types
-                    .insert(module.clone(), self.instances.len());
-                self.instances.push(Rc::new(InstanceType::default()));
-            }
-            let f = u.choose(&choices)?;
-            let ty = f(u, self)?;
-
-            if let Some(name) = &name {
-                if module_linking {
-                    let idx = self.implicit_instance_types[&module];
-                    let instance_ty = &mut self.instances[idx];
-                    Rc::get_mut(instance_ty)
-                        .expect("shouldn't be aliased yet")
-                        .exports
-                        .insert(name.clone(), ty.clone());
+                let idx = u.choose(&self.host_func_types)?;
+                if !self.imported_funcs.contains(idx) {
+                    self.imported_funcs.push(*idx);
+                    let ty = self.func_type(*idx).clone();
+                    // println!("[imports] Push function with index {}", *idx);
+                    self.funcs.push((Some(*idx), ty.clone()));
+                    self.num_imports += 1;
+                    match &ty.host_function {
+                        Some(hf) =>
+                            imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), EntityType::Func(* idx, ty))),
+                        None =>
+                            panic!("Only host functions can be imported"),
+                    }
                 }
             }
 
-            self.num_imports += 1;
-            imports.push((module, name, ty));
+            // TODO (MRA) completely remove support for any imports other than concordium host functions
             Ok(true)
         })?;
         if !imports.is_empty() || u.arbitrary()? {
@@ -1065,6 +986,7 @@ where
                                 EntityType::Func(i, t) => (*i, t),
                                 _ => unreachable!(),
                             };
+                            // println!("[alias] Push function with index {}", i);
                             self.funcs.push((Some(i), ty.clone()));
                         }
                         ItemKind::Module => {
@@ -1306,7 +1228,9 @@ where
             }
             let max = self.func_types.len() - 1;
             let ty = self.func_types[u.int_in_range(0..=max)?];
+            // println!("[funcs] Push function with index {}", ty);
             self.funcs.push((Some(ty), self.func_type(ty).clone()));
+            self.num_defined_funcs += 1;
             Ok(true)
         })
     }
@@ -1458,7 +1382,7 @@ where
             self.config.min_exports(),
             self.config.max_exports(),
             |u| {
-                let name = unique_string(1_000, &mut export_names, u)?;
+                let name = format!("init_{}", unique_string(95, &mut export_names, u)?); // TODO (MRA) also receive; change max size
                 let f = u.choose(&choices)?;
                 let export = f(u, self)?;
                 self.exports.push((name, export));
@@ -1868,25 +1792,16 @@ pub(crate) fn arbitrary_loop(
     Ok(())
 }
 
-// Mirror what happens in `Arbitrary for String`, but do so with a clamped size.
-fn limited_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
+fn ascii_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
     let size = u.arbitrary_len::<u8>()?;
     let size = std::cmp::min(size, max_size);
-    match str::from_utf8(&u.peek_bytes(size).unwrap()) {
-        Ok(s) => {
-            u.get_bytes(size).unwrap();
-            Ok(deunicode(s.into()))
-        }
-        Err(e) => {
-            let i = e.valid_up_to();
-            let valid = u.get_bytes(i).unwrap();
-            let s = unsafe {
-                debug_assert!(str::from_utf8(valid).is_ok());
-                str::from_utf8_unchecked(valid)
-            };
-            Ok(deunicode(s.into()))
-        }
+    let mut v = String::new();
+    for _ in 0..size {
+        let c = char::from(65 + u8::arbitrary(u)? % (90 - 65)); // todo (MRA) all ASCI chars; these are just upper case letters
+        v.push(c);
+        assert!(String::from(c).is_ascii());
     }
+    Ok(v)
 }
 
 fn unique_string(
@@ -1894,7 +1809,7 @@ fn unique_string(
     names: &mut HashSet<String>,
     u: &mut Unstructured,
 ) -> Result<String> {
-    let mut name = limited_string(max_size, u)?;
+    let mut name = ascii_string(max_size, u)?;
     while names.contains(&name) {
         name.push_str(&format!("{}", names.len()));
     }
@@ -1908,9 +1823,9 @@ fn unique_import_strings(
     module_linking_enabled: bool,
     u: &mut Unstructured,
 ) -> Result<(String, Option<String>)> {
-    let mut module = limited_string(max_size, u)?;
+    let mut module = ascii_string(max_size, u)?;
     if !module_linking_enabled {
-        let field = limited_string(max_size, u)?;
+        let field = ascii_string(max_size, u)?;
         return Ok((module, Some(field)));
     }
     loop {
@@ -1936,7 +1851,7 @@ fn unique_import_strings(
     let field = if u.arbitrary()? {
         None
     } else {
-        Some(limited_string(1_000, u)?)
+        Some(ascii_string(1_000, u)?)
     };
     let set = field.as_ref().map(|name| {
         let mut set = HashSet::new();
