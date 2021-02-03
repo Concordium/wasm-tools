@@ -41,9 +41,6 @@ pub trait Config: Arbitrary + Default + Clone {
     /// The return types of functions that can be exported. If None, any return types are allowed.
     fn allowed_export_types(&self) -> Option<Vec<FuncType>> { None }
 
-    /// Should the return types of exportable functions be restricted?
-    fn restrict_export_types(&self) -> bool { self.allowed_export_types().is_some() }
-
     /// The minimum number of imports to generate. Defaults to 0.
     ///
     /// Note that if the sum of the maximum function[^1], table, global and

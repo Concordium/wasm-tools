@@ -64,7 +64,7 @@ use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;
 use crate::config::HostFunction;
-use std::cmp::max;
+use std::cmp::{max, min};
 
 mod code_builder;
 mod config;
@@ -142,6 +142,8 @@ where
     imported_funcs: Vec<String>,
     /// Indices within `types` that can be types of functions that can be exported
     valid_export_types: Vec<usize>,
+    /// Indices within `types` that are used for the auxiliary export functions
+    auxiliary_export_types: Vec<usize>,
 
     /// The number of functions defined in this module (not imported or
     /// aliased).
@@ -238,6 +240,7 @@ struct FuncType {
     params: Vec<ValType>,
     result: Option<ValType>,
     host_function: Option<HostFunction>,
+    auxiliary: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -559,10 +562,21 @@ where
         let section_idx = self.initial_sections.len();
         self.initial_sections.push(InitialSection::Type(Vec::new()));
         arbitrary_loop(u, min, self.config.max_types() - self.types.len(), |u| {
-            let ty = self.arbitrary_type(u)?;
+            let ty = self.arbitrary_func_type(u)?;
             self.add_type_to_initial_section(section_idx, ty);
             Ok(true)
         })?;
+        match self.config.allowed_export_types() {
+            // If we restrict export types, we now make sure to add function calls
+            // for all non-exportable functions so that they are reachable.
+            Some(types) => {
+                for (params, result) in types {
+                    let ty = FuncType { params: params, result: result, host_function: None, auxiliary: true };
+                    self.add_type_to_initial_section(section_idx, Rc::new(ty));
+                }
+            }
+            None => ()
+        }
         let types = match self.initial_sections.last_mut().unwrap() {
             InitialSection::Type(list) => list,
             _ => unreachable!(),
@@ -599,16 +613,15 @@ where
                 if ty.host_function.is_none() && types.contains(&(ty.params.clone(), ty.result.clone())) {
                     self.valid_export_types.push(types_idx);
                 }
+                if ty.auxiliary {
+                    self.auxiliary_export_types.push(types_idx);
+                }
             }
             _ => { // Return types are not restricted so add type
                 self.valid_export_types.push(types_idx);
             }
         }
         list.push(types_idx);
-    }
-
-    fn arbitrary_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
-        Ok(self.arbitrary_func_type(u)?)
     }
 
     fn arbitrary_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
@@ -625,7 +638,7 @@ where
             if u.arbitrary()? {
                 result = Some(m.arbitrary_valtype(u)?);
             }
-            Ok(FuncType { params, result, host_function: None })
+            Ok(FuncType { params, result, host_function: None, auxiliary: false })
         });
         // Adding host-function choice
         if !self.config().host_functions().is_empty() {
@@ -633,7 +646,7 @@ where
                 let hfs = m.config().host_functions();
                 let hf = u.choose(&hfs)?;
                 let ret_type = hf.result;
-                Ok(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()) })
+                Ok(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()), auxiliary: false })
             });
         }
         let result = u.choose(&choices)?;
@@ -1188,9 +1201,9 @@ pub(crate) fn arbitrary_loop(
 
 fn ascii_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
     let size = u.arbitrary_len::<u8>()?;
-    let size = std::cmp::min(size, max_size);
+    let size = min(1, min(size, max_size));
     let mut v = String::new();
-    for _ in 0..size {
+    for _ in 0..=size {
         let c = char::from(65 + u8::arbitrary(u)? % (90 - 65)); // todo (MRA) all ASCI chars; these are just upper case letters
         v.push(c);
         assert!(String::from(c).is_ascii());
@@ -1205,7 +1218,7 @@ fn unique_string(
 ) -> Result<String> {
     let init_str = String::from("init_");
     let init_len = init_str.len();
-    let prefix = if u.arbitrary()? { init_str } else { ascii_string(init_len, u)? };
+    let prefix = if /*u.arbitrary()?*/ true { init_str } else { ascii_string(init_len, u)? }; // TODO (MRA) replace with arbitrary (uncomment)
     let mut name;
     loop {
         name = prefix.clone();

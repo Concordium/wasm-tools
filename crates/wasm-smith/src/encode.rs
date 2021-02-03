@@ -19,7 +19,12 @@ where
 
     /// The names of functions that are exported from this module
     pub fn exports(&self) -> Vec<&String> {
-        self.exports.iter().map(|(str, _)| str).collect()
+        self.exports.iter().flat_map(|(str, exp)| {
+            match exp {
+                Export::Func(_) => Some(str),
+                _ => None
+            }
+        }).collect()
     }
 
     fn encoded(&self) -> wasm_encoder::Module {
