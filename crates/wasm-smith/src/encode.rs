@@ -17,17 +17,9 @@ where
         self.encoded().finish()
     }
 
-    /// The names of functions and their types that are exported from this module
-    pub fn exports(&self) -> Vec<(&String, &Vec<ValType>, &Vec<ValType>)> {
-        self.exports.iter().flat_map(|(str, exp)| {
-            match exp {
-                Export::Func(id) => {
-                    let (_, tpe) = &self.funcs[*id as usize];
-                    Some((str, &tpe.params, &tpe.results))
-                },
-                _ => None,
-            }
-        }).collect()
+    /// The names of functions that are exported from this module
+    pub fn exports(&self) -> Vec<&String> {
+        self.exports.iter().map(|(str, _)| str).collect()
     }
 
     fn encoded(&self) -> wasm_encoder::Module {
@@ -67,7 +59,7 @@ where
                 Type::Func(ty) => {
                     section.function(
                         ty.params.iter().map(|t| translate_val_type(*t)),
-                        ty.results.iter().map(|t| translate_val_type(*t)),
+                        ty.result.iter().map(|t| translate_val_type(*t)),
                     );
                 }
                 Type::Module(ty) => {
@@ -323,9 +315,9 @@ fn translate_val_type(ty: ValType) -> wasm_encoder::ValType {
 
 fn translate_entity_type(ty: &EntityType) -> wasm_encoder::EntityType {
     match ty {
-        EntityType::Func(f, _) => wasm_encoder::EntityType::Function(*f),
-        EntityType::Instance(i, _) => wasm_encoder::EntityType::Instance(*i),
-        EntityType::Module(i, _) => wasm_encoder::EntityType::Module(*i),
+        EntityType::Func(f, _) => wasm_encoder::EntityType::Function(*f as u32),
+        EntityType::Instance(i, _) => wasm_encoder::EntityType::Instance(*i as u32),
+        EntityType::Module(i, _) => wasm_encoder::EntityType::Module(*i as u32),
         EntityType::Table(ty) => translate_table_type(ty).into(),
         EntityType::Memory(m) => translate_memory_type(m).into(),
         EntityType::Global(g) => translate_global_type(g).into(),
@@ -363,7 +355,7 @@ fn translate_block_type(ty: BlockType) -> wasm_encoder::BlockType {
     match ty {
         BlockType::Empty => wasm_encoder::BlockType::Empty,
         BlockType::Result(ty) => wasm_encoder::BlockType::Result(translate_val_type(ty)),
-        BlockType::FuncType(f) => wasm_encoder::BlockType::FunctionType(f),
+        BlockType::FuncType(f) => wasm_encoder::BlockType::FunctionType(f as u32),
     }
 }
 
@@ -517,10 +509,6 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         I32WrapI64 => wasm_encoder::Instruction::I32WrapI64,
         I64ExtendI32S => wasm_encoder::Instruction::I64ExtendI32S,
         I64ExtendI32U => wasm_encoder::Instruction::I64ExtendI32U,
-        I32Extend8S => wasm_encoder::Instruction::I32Extend8S,
-        I32Extend16S => wasm_encoder::Instruction::I32Extend16S,
-        I64Extend8S => wasm_encoder::Instruction::I64Extend8S,
-        I64Extend16S => wasm_encoder::Instruction::I64Extend16S,
         I64Extend32S => wasm_encoder::Instruction::I64Extend32S,
         TypedSelect(ty) => wasm_encoder::Instruction::TypedSelect(translate_val_type(ty)),
         RefNull(ty) => wasm_encoder::Instruction::RefNull(translate_val_type(ty)),

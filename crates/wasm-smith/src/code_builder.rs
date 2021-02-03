@@ -171,10 +171,6 @@ instructions! {
     (Some(i64_on_stack), i32_wrap_i64),
     (Some(i32_on_stack), i64_extend_i32_s),
     (Some(i32_on_stack), i64_extend_i32_u),
-    (Some(i32_on_stack), i32_extend_8_s),
-    (Some(i32_on_stack), i32_extend_16_s),
-    (Some(i64_on_stack), i64_extend_8_s),
-    (Some(i64_on_stack), i64_extend_16_s),
     (Some(i64_on_stack), i64_extend_32_s),
     // reference types proposal
     (Some(ref_null_valid), ref_null),
@@ -339,7 +335,7 @@ where
         self.controls.push(Control {
             kind: ControlKind::Block,
             params: vec![],
-            results: func_ty.results.clone(),
+            results: func_ty.result.into_iter().collect(),
             height: 0,
         });
 
@@ -415,7 +411,7 @@ where
 
         for (i, ty) in module.func_types() {
             if self.types_on_stack(&ty.params) {
-                options.push(Box::new(move |_| Ok(BlockType::FuncType(i as u32))));
+                options.push(Box::new(move |_| Ok(BlockType::FuncType(i))));
             }
         }
 
@@ -776,7 +772,14 @@ fn call<C: Config>(
     let i = u.int_in_range(0..=candidates.len() - 1)?;
     let (func_idx, ty) = module.funcs().nth(candidates[i] as usize).unwrap();
     builder.pop_operands(&ty.params);
-    builder.push_operands(&ty.results);
+    match ty.result {
+        Some(t) => {
+            builder.push_operands(&[t]);
+        }
+        None => {
+            builder.push_operands(&[]);
+        }
+    }
     Ok(Instruction::Call(func_idx as u32))
 }
 
@@ -809,7 +812,14 @@ fn call_indirect<C: Config>(
         .collect::<Vec<_>>();
     let (type_idx, ty) = u.choose(&choices)?;
     builder.pop_operands(&ty.params);
-    builder.push_operands(&ty.results);
+    match ty.result {
+        Some(t) => {
+            builder.push_operands(&[t]);
+        },
+        None => {
+            builder.push_operands(&[]);
+        },
+    }
     let table = *u.choose(&builder.allocs.funcref_tables)?;
     Ok(Instruction::CallIndirect {
         ty: *type_idx as u32,
@@ -1959,46 +1969,6 @@ fn i64_extend_i32_u<C: Config>(
     builder.pop_operands(&[ValType::I32]);
     builder.push_operands(&[ValType::I64]);
     Ok(Instruction::I64ExtendI32U)
-}
-
-fn i32_extend_8_s<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32]);
-    builder.push_operands(&[ValType::I32]);
-    Ok(Instruction::I32Extend8S)
-}
-
-fn i32_extend_16_s<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32]);
-    builder.push_operands(&[ValType::I32]);
-    Ok(Instruction::I32Extend16S)
-}
-
-fn i64_extend_8_s<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I64]);
-    builder.push_operands(&[ValType::I64]);
-    Ok(Instruction::I64Extend8S)
-}
-
-fn i64_extend_16_s<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I64]);
-    builder.push_operands(&[ValType::I64]);
-    Ok(Instruction::I64Extend16S)
 }
 
 fn i64_extend_32_s<C: Config>(

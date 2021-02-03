@@ -134,18 +134,20 @@ where
     /// space).
     types: Vec<LocalType>,
     /// Indices within `types` that are (non-host) function types.
-    func_types: Vec<u32>,
+    func_types: Vec<usize>,
     /// Indices within `types` that are host-function types.
-    host_func_types: Vec<u32>,
+    host_func_types: Vec<usize>,
     /// Indices within `types` that are module types.
-    module_types: Vec<u32>,
+    module_types: Vec<usize>,
     /// Indices within `types` that are instance types.
-    instance_types: Vec<u32>,
+    instance_types: Vec<usize>,
 
     /// Number of imported items into this module.
     num_imports: usize, // todo (MRA) remove this and only use imported funcs because we only allow importing functions
     /// Names of already imported host functions
     imported_funcs: Vec<String>,
+    /// Indices within `types` that can be types of functions that can be exported
+    valid_export_types: Vec<usize>,
 
     /// Number of items aliased into this module.
     num_aliases: usize,
@@ -173,7 +175,7 @@ where
     /// Note that aliased functions may have types not defined in this module,
     /// hence the optional index type. All defined functions in this module,
     /// however, will have an index type specified.
-    funcs: Vec<(Option<u32>, Rc<FuncType>)>,
+    funcs: Vec<(Option<usize>, Rc<FuncType>)>,
 
     /// All tables available to this module, sorted by their index. The list
     /// entry is the type of each table.
@@ -261,7 +263,7 @@ enum Type {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct FuncType {
     params: Vec<ValType>,
-    results: Vec<ValType>,
+    result: Option<ValType>,
     host_function: Option<HostFunction>,
 }
 
@@ -285,9 +287,9 @@ enum EntityType {
     Global(GlobalType),
     Table(TableType),
     Memory(MemoryType),
-    Func(u32, Rc<FuncType>),
-    Instance(u32, Rc<InstanceType>),
-    Module(u32, Rc<ModuleType>),
+    Func(usize, Rc<FuncType>),
+    Instance(usize, Rc<InstanceType>),
+    Module(usize, Rc<ModuleType>),
 }
 
 /// Types of Wasm values
@@ -424,7 +426,7 @@ enum Instructions {
 enum BlockType {
     Empty,
     Result(ValType),
-    FuncType(u32),
+    FuncType(usize),
 }
 
 impl BlockType {
@@ -437,7 +439,7 @@ impl BlockType {
             BlockType::Result(t) => (vec![], vec![*t]),
             BlockType::FuncType(ty) => {
                 let ty = module.func_type(*ty);
-                (ty.params.clone(), ty.results.clone())
+                (ty.params.clone(), ty.result.into_iter().collect())
             }
         }
     }
@@ -570,10 +572,6 @@ enum Instruction {
     I32WrapI64,
     I64ExtendI32S,
     I64ExtendI32U,
-    I32Extend8S,
-    I32Extend16S,
-    I64Extend8S,
-    I64Extend16S,
     I64Extend32S,
     TypedSelect(ValType),
     RefNull(ValType),
@@ -733,7 +731,19 @@ where
             Type::Module(_) => &mut self.module_types,
             Type::Instance(_) => &mut self.instance_types,
         };
-        list.push(self.types.len() as u32);
+        let types_idx = self.types.len();
+        match (&ty, self.config.allowed_return_types()) {
+            (Type::Func(ft), Some(types)) => {
+                if ft.host_function.is_none() && types.contains(&(ft.params.clone(), ft.result.clone())) {
+                    self.valid_export_types.push(types_idx);
+                }
+            }
+            (Type::Func(_), _) => { // Return types are not restricted so add type
+                self.valid_export_types.push(types_idx);
+            }
+            _ => ()
+        }
+        list.push(types_idx);
     }
 
     fn arbitrary_type(&mut self, u: &mut Unstructured) -> Result<Type> {
@@ -753,24 +763,23 @@ where
         // Adding non-host function choice
         choices.push(|u, m| {
             let mut params = vec![];
-            let mut results = vec![];
+            let mut result = None;
             arbitrary_loop(u, 0, 20, |u| {
                 params.push(m.arbitrary_valtype(u)?);
                 Ok(true)
             })?;
-            arbitrary_loop(u, 0, m.config.max_return_values(), |u| {
-                results.push(m.arbitrary_valtype(u)?);
-                Ok(true)
-            })?;
-            Ok(FuncType { params, results, host_function: None })
+            if u.arbitrary()? {
+                result = Some(m.arbitrary_valtype(u)?);
+            }
+            Ok(FuncType { params, result, host_function: None })
         });
         // Adding host-function choice
         if !self.config().host_functions().is_empty() {
             choices.push(|u, m| {
                 let hfs = m.config().host_functions();
                 let hf = u.choose(&hfs)?;
-                let ret_type = hf.result.iter().cloned().collect();
-                Ok(FuncType { params: hf.params.clone(), results: ret_type, host_function: Some(hf.clone()) })
+                let ret_type = hf.result;
+                Ok(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()) })
             });
         }
         let result = u.choose(&choices)?;
@@ -792,7 +801,7 @@ where
                 let ty = self.arbitrary_entity_type(u, entities)?;
                 if let Some(name) = &name {
                     let ity = import_types.entry(module.clone()).or_insert_with(|| {
-                        EntityType::Instance(u32::max_value(), Default::default())
+                        EntityType::Instance(usize::MAX, Default::default())
                     });
                     let ity = match ity {
                         EntityType::Instance(_, ty) => Rc::get_mut(ty).unwrap(),
@@ -894,15 +903,15 @@ where
     }
 
     fn can_add_local_or_import_table(&self) -> bool {
-       false// self.tables.len() < self.config.max_tables()
+       self.tables.len() < self.config.max_tables()
     }
 
     fn can_add_local_or_import_global(&self) -> bool {
-       false // self.globals.len() < self.config.max_globals()
+       self.globals.len() < self.config.max_globals()
     }
 
     fn can_add_local_or_import_memory(&self) -> bool {
-       false// self.memories.len() < self.config.max_memories()
+       self.memories.len() < self.config.max_memories()
     }
 
     fn arbitrary_imports(&mut self, min: usize, u: &mut Unstructured) -> Result<()> {
@@ -917,7 +926,7 @@ where
                         if !self.imported_funcs.contains(&hf_name) {
                             self.imported_funcs.push(hf_name);
                             // println!("[imports] Push function with index {}", *idx);
-                            self.funcs.push((Some(*idx), ty.clone()));
+                            self.funcs.push((Some(*idx as usize), ty.clone()));
                             self.num_imports += 1;
                             imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), EntityType::Func(*idx, ty)))
                         }
@@ -1071,7 +1080,7 @@ where
             module.outers = self.outers.clone();
             let parent = Outer {
                 types: (0..self.types.len())
-                    .map(|i| self.ty(i as u32).clone())
+                    .map(|i| self.ty(i).clone())
                     .collect(),
                 modules: self.modules.clone(),
             };
@@ -1100,7 +1109,7 @@ where
                     // Otherwise if we haven't already recorded the implicit
                     // type of `name` then we do so here.
                     let ty = module.instances[module.implicit_instance_types[name]].clone();
-                    import_types.insert(name.clone(), EntityType::Instance(u32::max_value(), ty));
+                    import_types.insert(name.clone(), EntityType::Instance(usize::MAX, ty));
                 }
                 imports.push((name.clone(), field.clone(), ty.clone()));
             }
@@ -1136,18 +1145,18 @@ where
             Export::Table(idx) => EntityType::Table(self.tables[idx as usize].clone()),
             Export::Func(idx) => {
                 let (_idx, ty) = &self.funcs[idx as usize];
-                EntityType::Func(u32::max_value(), ty.clone())
+                EntityType::Func(usize::MAX, ty.clone())
             }
             Export::Module(idx) => {
-                EntityType::Module(u32::max_value(), self.modules[idx as usize].clone())
+                EntityType::Module(usize::MAX, self.modules[idx as usize].clone())
             }
             Export::Instance(idx) => {
-                EntityType::Instance(u32::max_value(), self.instances[idx as usize].clone())
+                EntityType::Instance(usize::MAX, self.instances[idx as usize].clone())
             }
         }
     }
 
-    fn ty(&self, idx: u32) -> &Type {
+    fn ty(&self, idx: usize) -> &Type {
         match &self.types[idx as usize] {
             LocalType::Defined { section, nth } => {
                 if let InitialSection::Type(list) = &self.initial_sections[*section] {
@@ -1160,7 +1169,7 @@ where
     }
 
     // All (non-host and host) function types
-    fn func_types<'a>(&'a self) -> impl Iterator<Item = (u32, &'a FuncType)> + 'a {
+    fn func_types<'a>(&'a self) -> impl Iterator<Item = (usize, &'a FuncType)> + 'a {
         self.func_types
             .iter()
             .chain(&self.host_func_types)
@@ -1168,21 +1177,21 @@ where
             .map(move |type_i| (type_i, &**self.func_type(type_i)))
     }
 
-    fn func_type(&self, idx: u32) -> &Rc<FuncType> {
+    fn func_type(&self, idx: usize) -> &Rc<FuncType> {
         if let Type::Func(f) = self.ty(idx) {
             return f;
         }
         panic!("looked up a function type with the wrong index")
     }
 
-    fn instance_type(&self, idx: u32) -> &Rc<InstanceType> {
+    fn instance_type(&self, idx: usize) -> &Rc<InstanceType> {
         if let Type::Instance(f) = self.ty(idx) {
             return f;
         }
         panic!("looked up an instance type with the wrong index")
     }
 
-    fn module_type(&self, idx: u32) -> &Rc<ModuleType> {
+    fn module_type(&self, idx: usize) -> &Rc<ModuleType> {
         if let Type::Module(f) = self.ty(idx) {
             return f;
         }
@@ -1331,10 +1340,26 @@ where
         let mut choices: Vec<fn(&mut Unstructured, &mut ConfiguredModule<C>) -> Result<_>> =
             Vec::with_capacity(4);
 
-        if self.funcs.len() > 0 {
+        if self.funcs.len() > 0 && self.valid_export_types.len() > 0 {
             choices.push(|u, m| {
-                let idx = u.int_in_range(0..=m.funcs.len() - 1)?;
-                Ok(Export::Func(idx as u32))
+                // Filtering out the indices of functions whose types allow them to be exported
+                let mut exportable_funcs = Vec::new();
+                for (type_idx_opt, _) in m.funcs.iter() {
+                    match type_idx_opt {
+                        Some(type_idx) =>
+                            if m.valid_export_types.contains(type_idx) && m.funcs.as_slice()[*type_idx].0.is_some() {
+                                exportable_funcs.push(*type_idx);
+                            }
+                        None => ()
+                    }
+                }
+                if exportable_funcs.len() > 0 {
+                    let idx = u.choose(exportable_funcs.as_slice())?;
+                    let type_id = m.funcs[*idx].0.unwrap();
+                    Ok(Export::Func(type_id as u32))
+                } else {
+                    Err(todo!())
+                }
             });
         }
 
@@ -1400,7 +1425,7 @@ where
         let mut choices = Vec::with_capacity(self.funcs.len() as usize);
 
         for (func_idx, ty) in self.funcs() {
-            if ty.params.is_empty() && ty.results.is_empty() {
+            if ty.params.is_empty() && ty.result.is_none() {
                 choices.push(func_idx);
             }
         }

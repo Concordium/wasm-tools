@@ -35,8 +35,8 @@ impl FunctionSection {
     }
 
     /// Define a function that uses the given type.
-    pub fn function(&mut self, type_index: u32) -> &mut Self {
-        self.bytes.extend(encoders::u32(type_index));
+    pub fn function(&mut self, type_index: usize) -> &mut Self {
+        self.bytes.extend(encoders::u32(type_index as u32));
         self.num_added += 1;
         self
     }

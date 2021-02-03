@@ -122,7 +122,7 @@ impl EntityType {
         match self {
             EntityType::Function(x) => {
                 dst.push(0x00);
-                dst.extend(encoders::u32(*x));
+                dst.extend(encoders::u32(*x as u32));
             }
             EntityType::Table(ty) => {
                 dst.push(0x01);
@@ -138,11 +138,11 @@ impl EntityType {
             }
             EntityType::Module(ty) => {
                 dst.push(0x05);
-                dst.extend(encoders::u32(*ty));
+                dst.extend(encoders::u32(*ty as u32));
             }
             EntityType::Instance(ty) => {
                 dst.push(0x06);
-                dst.extend(encoders::u32(*ty));
+                dst.extend(encoders::u32(*ty as u32));
             }
         }
     }

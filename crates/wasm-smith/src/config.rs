@@ -12,6 +12,8 @@ pub struct HostFunction {
     pub result: Option<ValType>,
 }
 
+type FuncType = (Vec<ValType>, Option<ValType>);
+
 /// Configuration for a generated module.
 ///
 /// Don't care to configure your generated modules? Just use
@@ -36,8 +38,8 @@ pub trait Config: Arbitrary + Default + Clone {
         100
     }
 
-    /// The maximum number of values a function can return
-    fn max_return_values(&self) -> usize { 20 }
+    /// The return types of functions that can be exported. If None, any return types are allowed.
+    fn allowed_return_types(&self) -> Option<Vec<FuncType>> { None }
 
     /// The minimum number of imports to generate. Defaults to 0.
     ///
@@ -509,7 +511,9 @@ impl Config for InterpreterConfig {
 
     fn allow_start_export(&self) -> bool { false }
 
-    fn max_return_values(&self) -> usize { 1 }
-
     fn allow_arbitrary_instr(&self) -> bool { false }
+
+    fn allowed_return_types(&self) -> Option<Vec<FuncType>> {
+        Some(vec![(vec![ValType::I64], Some(ValType::I32))])
+    }
 }
