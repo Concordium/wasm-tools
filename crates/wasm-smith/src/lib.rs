@@ -64,6 +64,7 @@ use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;
 use crate::config::HostFunction;
+use std::cmp::max;
 
 mod code_builder;
 mod config;
@@ -923,7 +924,7 @@ where
             self.config.min_exports(),
             self.config.max_exports(),
             |u| {
-                let name = format!("init_{}", unique_string(95, &mut export_names, u)?); // TODO (MRA) also receive; change max size
+                let name = unique_string(100, &mut export_names, u)?;
                 let f = u.choose(&choices)?;
                 let export = f(u, self)?;
                 self.exports.push((name, export));
@@ -1209,9 +1210,16 @@ fn unique_string(
     names: &mut HashSet<String>,
     u: &mut Unstructured,
 ) -> Result<String> {
-    let mut name = ascii_string(max_size, u)?;
-    while names.contains(&name) {
-        name.push_str(&format!("{}", names.len()));
+    let init_str = String::from("init_");
+    let init_len = init_str.len();
+    let prefix = if u.arbitrary()? { init_str } else { ascii_string(init_len, u)? };
+    let mut name;
+    loop {
+        name = prefix.clone();
+        name.push_str(ascii_string(max(max_size, max_size - init_len), u)?.as_str());
+        if !names.contains(&name) {
+            break;
+        }
     }
     names.insert(name.clone());
     Ok(name)
