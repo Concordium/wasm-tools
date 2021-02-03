@@ -135,10 +135,6 @@ where
     func_types: Vec<usize>,
     /// Indices within `types` that are host-function types.
     host_func_types: Vec<usize>,
-    /// Indices within `types` that are module types.
-    module_types: Vec<usize>,
-    /// Indices within `types` that are instance types.
-    instance_types: Vec<usize>,
 
     /// Number of imported items into this module.
     num_imports: usize, // todo (MRA) remove this and only use imported funcs because we only allow importing functions
@@ -146,9 +142,6 @@ where
     imported_funcs: Vec<String>,
     /// Indices within `types` that can be types of functions that can be exported
     valid_export_types: Vec<usize>,
-
-    /// Number of items aliased into this module.
-    num_aliases: usize,
 
     /// The number of functions defined in this module (not imported or
     /// aliased).
