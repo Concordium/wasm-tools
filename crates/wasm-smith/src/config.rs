@@ -180,22 +180,6 @@ pub trait Config: Arbitrary + Default + Clone {
         false
     }
 
-    /// The maximum number of instances to use. Defaults to 10. This includes
-    /// imported instances.
-    ///
-    /// Note that this is irrelevaant unless module linking is enabled.
-    fn max_instances(&self) -> usize {
-        10
-    }
-
-    /// The maximum number of modules to use. Defaults to 10. This includes
-    /// imported modules.
-    ///
-    /// Note that this is irrelevaant unless module linking is enabled.
-    fn max_modules(&self) -> usize {
-        10
-    }
-
     /// Control the probability of generating memory offsets that are in bounds
     /// vs. potentially out of bounds.
     ///
@@ -247,27 +231,9 @@ pub trait Config: Arbitrary + Default + Clone {
         false
     }
 
-    /// Determines whether the module linking proposal is enabled.
-    ///
-    /// Defaults to `false`.
-    fn module_linking_enabled(&self) -> bool {
-        false
-    }
-
     /// Determines whether a `start` export may be included. Defaults to `true`.
     fn allow_start_export(&self) -> bool {
         true
-    }
-
-    /// Returns the maximal size of the `alias` section.
-    fn max_aliases(&self) -> usize {
-        1_000
-    }
-
-    /// Returns the maximal nesting depth of modules with the module linking
-    /// proposal.
-    fn max_nesting_depth(&self) -> usize {
-        10
     }
 
     /// The set of admissible host functions that can be imported into the module
@@ -312,9 +278,6 @@ pub struct SwarmConfig {
     max_memory_pages: u32,
     bulk_memory_enabled: bool,
     reference_types_enabled: bool,
-    module_linking_enabled: bool,
-    max_aliases: usize,
-    max_nesting_depth: usize,
 }
 
 impl Arbitrary for SwarmConfig {
@@ -340,9 +303,6 @@ impl Arbitrary for SwarmConfig {
             min_uleb_size: u.int_in_range(0..=5)?,
             bulk_memory_enabled: u.arbitrary()?,
             reference_types_enabled,
-            module_linking_enabled: false,
-            max_aliases: u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_nesting_depth: u.int_in_range(0..=10)?,
         })
     }
 }
@@ -406,18 +366,6 @@ impl Config for SwarmConfig {
 
     fn reference_types_enabled(&self) -> bool {
         self.reference_types_enabled
-    }
-
-    fn module_linking_enabled(&self) -> bool {
-        self.module_linking_enabled
-    }
-
-    fn max_aliases(&self) -> usize {
-        self.max_aliases
-    }
-
-    fn max_nesting_depth(&self) -> usize {
-        self.max_nesting_depth
     }
 
     fn host_functions(&self) -> Vec<HostFunction> {

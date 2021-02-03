@@ -45,42 +45,17 @@ where
             match init {
                 InitialSection::Type(types) => self.encode_types(module, types),
                 InitialSection::Import(imports) => self.encode_imports(module, imports),
-                InitialSection::Alias(aliases) => self.encode_aliases(module, aliases),
-                InitialSection::Instance(list) => self.encode_instances(module, list),
-                InitialSection::Module(list) => self.encode_modules(module, list),
             }
         }
     }
 
-    fn encode_types(&self, module: &mut wasm_encoder::Module, types: &[Type]) {
+    fn encode_types(&self, module: &mut wasm_encoder::Module, types: &[Rc<FuncType>]) {
         let mut section = wasm_encoder::TypeSection::new();
         for ty in types {
-            match ty {
-                Type::Func(ty) => {
-                    section.function(
-                        ty.params.iter().map(|t| translate_val_type(*t)),
-                        ty.result.iter().map(|t| translate_val_type(*t)),
-                    );
-                }
-                Type::Module(ty) => {
-                    section.module(
-                        ty.imports.iter().map(|(module, name, ty)| {
-                            (module.as_str(), name.as_deref(), translate_entity_type(ty))
-                        }),
-                        ty.exports
-                            .exports
-                            .iter()
-                            .map(|(name, ty)| (name.as_str(), translate_entity_type(ty))),
-                    );
-                }
-                Type::Instance(ty) => {
-                    section.instance(
-                        ty.exports
-                            .iter()
-                            .map(|(name, ty)| (name.as_str(), translate_entity_type(ty))),
-                    );
-                }
-            }
+            section.function(
+                ty.params.iter().map(|t| translate_val_type(*t)),
+                ty.result.iter().map(|t| translate_val_type(*t)),
+            );
         }
         module.section(&section);
     }
@@ -88,56 +63,11 @@ where
     fn encode_imports(
         &self,
         module: &mut wasm_encoder::Module,
-        imports: &[(String, Option<String>, EntityType)],
+        imports: &[(String, Option<String>, FunctionType)],
     ) {
         let mut section = wasm_encoder::ImportSection::new();
         for (module, name, ty) in imports {
             section.import(module, name.as_deref(), translate_entity_type(ty));
-        }
-        module.section(&section);
-    }
-
-    fn encode_aliases(&self, module: &mut wasm_encoder::Module, imports: &[Alias]) {
-        let mut section = wasm_encoder::AliasSection::new();
-        for alias in imports {
-            match alias {
-                Alias::InstanceExport {
-                    instance,
-                    kind,
-                    name,
-                } => {
-                    section.instance_export(*instance, translate_item_kind(kind), name);
-                }
-                Alias::OuterType { depth, index } => {
-                    section.outer_type(*depth, *index);
-                }
-                Alias::OuterModule { depth, index } => {
-                    section.outer_module(*depth, *index);
-                }
-            }
-        }
-        module.section(&section);
-    }
-
-    fn encode_instances(&self, module: &mut wasm_encoder::Module, list: &[Instance]) {
-        let mut section = wasm_encoder::InstanceSection::new();
-        for instance in list {
-            section.instantiate(
-                instance.module,
-                instance
-                    .args
-                    .iter()
-                    .map(|(name, export)| (name.as_str(), translate_export(export))),
-            );
-        }
-        module.section(&section);
-    }
-
-    fn encode_modules(&self, module: &mut wasm_encoder::Module, list: &[Self]) {
-        let mut section = wasm_encoder::ModuleSection::new();
-        for module in list {
-            let encoded = module.encoded();
-            section.module(&encoded);
         }
         module.section(&section);
     }
@@ -313,14 +243,9 @@ fn translate_val_type(ty: ValType) -> wasm_encoder::ValType {
     }
 }
 
-fn translate_entity_type(ty: &EntityType) -> wasm_encoder::EntityType {
+fn translate_entity_type(ty: &FunctionType) -> wasm_encoder::EntityType {
     match ty {
-        EntityType::Func(f, _) => wasm_encoder::EntityType::Function(*f as u32),
-        EntityType::Instance(i, _) => wasm_encoder::EntityType::Instance(*i as u32),
-        EntityType::Module(i, _) => wasm_encoder::EntityType::Module(*i as u32),
-        EntityType::Table(ty) => translate_table_type(ty).into(),
-        EntityType::Memory(m) => translate_memory_type(m).into(),
-        EntityType::Global(g) => translate_global_type(g).into(),
+        FunctionType::Func(f, _) => wasm_encoder::EntityType::Function(*f as u32),
     }
 }
 
@@ -367,25 +292,12 @@ fn translate_mem_arg(m: MemArg) -> wasm_encoder::MemArg {
     }
 }
 
-fn translate_item_kind(kind: &ItemKind) -> wasm_encoder::ItemKind {
-    match kind {
-        ItemKind::Func => wasm_encoder::ItemKind::Function,
-        ItemKind::Table => wasm_encoder::ItemKind::Table,
-        ItemKind::Memory => wasm_encoder::ItemKind::Memory,
-        ItemKind::Global => wasm_encoder::ItemKind::Global,
-        ItemKind::Instance => wasm_encoder::ItemKind::Instance,
-        ItemKind::Module => wasm_encoder::ItemKind::Module,
-    }
-}
-
 fn translate_export(export: &Export) -> wasm_encoder::Export {
     match export {
         Export::Func(idx) => wasm_encoder::Export::Function(*idx),
         Export::Table(idx) => wasm_encoder::Export::Table(*idx),
         Export::Memory(idx) => wasm_encoder::Export::Memory(*idx),
         Export::Global(idx) => wasm_encoder::Export::Global(*idx),
-        Export::Instance(idx) => wasm_encoder::Export::Instance(*idx),
-        Export::Module(idx) => wasm_encoder::Export::Module(*idx),
     }
 }
 
