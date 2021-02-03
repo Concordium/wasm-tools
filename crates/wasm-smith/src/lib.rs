@@ -594,9 +594,9 @@ where
                 &mut self.func_types
             };
         let types_idx = self.types.len();
-        match (&ty, self.config.allowed_return_types()) {
-            (ft, Some(types)) => {
-                if ft.host_function.is_none() && types.contains(&(ft.params.clone(), ft.result.clone())) {
+        match self.config.allowed_export_types() {
+            Some(types) => {
+                if ty.host_function.is_none() && types.contains(&(ty.params.clone(), ty.result.clone())) {
                     self.valid_export_types.push(types_idx);
                 }
             }

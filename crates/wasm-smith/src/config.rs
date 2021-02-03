@@ -39,7 +39,10 @@ pub trait Config: Arbitrary + Default + Clone {
     }
 
     /// The return types of functions that can be exported. If None, any return types are allowed.
-    fn allowed_return_types(&self) -> Option<Vec<FuncType>> { None }
+    fn allowed_export_types(&self) -> Option<Vec<FuncType>> { None }
+
+    /// Should the return types of exportable functions be restricted?
+    fn restrict_export_types(&self) -> bool { self.allowed_export_types().is_some() }
 
     /// The minimum number of imports to generate. Defaults to 0.
     ///
@@ -461,7 +464,7 @@ impl Config for InterpreterConfig {
 
     fn allow_arbitrary_instr(&self) -> bool { false }
 
-    fn allowed_return_types(&self) -> Option<Vec<FuncType>> {
+    fn allowed_export_types(&self) -> Option<Vec<FuncType>> {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])
     }
 }
