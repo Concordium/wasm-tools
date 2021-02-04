@@ -159,6 +159,9 @@ pub trait Config: Arbitrary + Default + Clone {
         0
     }
 
+    /// The upper bound on the minimum limit when a table is initialized
+    fn max_init_table_size(&self) -> u32 { 1_000_000 }
+
     /// The maximum number of tables to use. Defaults to 1. This includes
     /// imported tables.
     ///
@@ -460,6 +463,12 @@ impl Config for InterpreterConfig {
     fn allow_start_export(&self) -> bool { false }
 
     fn allow_arbitrary_instr(&self) -> bool { false }
+
+    fn max_globals(&self) -> usize { 1024 }
+
+    fn max_memories(&self) -> usize { 512 } // this is arbitrary, doesn't come from spec
+
+    fn max_init_table_size(&self) -> u32 { 1_000 }
 
     fn allowed_export_types(&self) -> Option<Vec<FuncType>> {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])

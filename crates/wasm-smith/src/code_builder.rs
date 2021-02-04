@@ -1,8 +1,11 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
+
+use arbitrary::{Result, Unstructured};
+
 use super::{
     BlockType, Config, ConfiguredModule, Elements, FuncType, Instruction, MemArg, ValType,
 };
-use arbitrary::{Result, Unstructured};
-use std::collections::{BTreeMap, BTreeSet};
 
 macro_rules! instructions {
 	(
@@ -443,6 +446,42 @@ where
         }
 
         Ok(instructions)
+    }
+
+    pub(crate) fn generate_auxiliary_fun_body(
+        &mut self,
+        callee_idx: usize,
+        callee_type: &Rc<FuncType>,
+    ) -> Result<Vec<Instruction>> {
+        let mut instructions = vec![];
+        for param_type in callee_type.params.iter() {
+            self.generate_operand_of_type(&mut instructions, param_type)
+        }
+        instructions.push(Instruction::Call(callee_idx as u32));
+        match self.func_ty.result {
+            Some(res) =>
+                self.generate_operand_of_type(&mut instructions, &res),
+            _ => ()
+        }
+        self.end_active_control_frames(&mut instructions);
+        Ok(instructions)
+    }
+
+    fn generate_operand_of_type(&self, instructions: &mut Vec<Instruction>, param_type: &ValType) {
+        match param_type { // TODO (MRA) Arbitrary arguments?
+            ValType::I32 => {
+                instructions.push(Instruction::I32Const(0));
+            }
+            ValType::I64 => {
+                instructions.push(Instruction::I64Const(0));
+            }
+            ValType::FuncRef => {
+                instructions.push(Instruction::RefFunc(0));
+            }
+            ValType::ExternRef => {
+                instructions.push(Instruction::RefNull(ValType::ExternRef));
+            }
+        }
     }
 
     fn end_active_control_frames(&mut self, instructions: &mut Vec<Instruction>) {

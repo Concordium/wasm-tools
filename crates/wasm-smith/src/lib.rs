@@ -144,6 +144,10 @@ where
     valid_export_types: Vec<usize>,
     /// Indices within `types` that are used for the auxiliary export functions
     auxiliary_export_types: Vec<usize>,
+    /// Indices within `funcs` that are auxiliary functions,
+    /// along with the index to the function they call (index in `funcs`, and the required return type (index in `types`)
+    /// TODO (MRA) This is all horrible. Encode this stuff in the type system.
+    auxiliary_funcs: Vec<(usize, usize, usize)>,
 
     /// The number of functions defined in this module (not imported or
     /// aliased).
@@ -168,7 +172,7 @@ where
     /// Note that aliased functions may have types not defined in this module,
     /// hence the optional index type. All defined functions in this module,
     /// however, will have an index type specified.
-    funcs: Vec<(Option<usize>, Rc<FuncType>)>,
+    funcs: Vec<(usize, Rc<FuncType>)>,
 
     /// All tables available to this module, sorted by their index. The list
     /// entry is the type of each table.
@@ -684,8 +688,7 @@ where
                         let hf_name = String::from(hf.name);
                         if !self.imported_funcs.contains(&hf_name) {
                             self.imported_funcs.push(hf_name);
-                            // println!("[imports] Push function with index {}", *idx);
-                            self.funcs.push((Some(*idx as usize), ty.clone()));
+                            self.funcs.push((*idx as usize, ty.clone()));
                             self.num_imports += 1;
                             imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), FunctionType::Func(*idx, ty)))
                         }
@@ -759,7 +762,7 @@ where
             } else {
                 ValType::FuncRef
             },
-            limits: Limits::limited(u, 1_000_000, false)?,
+            limits: Limits::limited(u, self.config.max_init_table_size(), false)?,
         })
     }
 
@@ -774,11 +777,22 @@ where
             }
             let max = self.func_types.len() - 1;
             let ty = self.func_types[u.int_in_range(0..=max)?];
-            // println!("[funcs] Push function with index {}", ty);
-            self.funcs.push((Some(ty), self.func_type(ty).clone()));
+            self.funcs.push((ty, self.func_type(ty).clone()));
             self.num_defined_funcs += 1;
             Ok(true)
-        })
+        })?;
+
+        // Defining auxiliary functions
+        let defined_fun_len = self.num_defined_funcs;
+        for export_type in self.auxiliary_export_types.iter() {
+            for i in self.funcs.len() - defined_fun_len..self.funcs.len() {
+                let (idx, _) = self.funcs[i];
+                self.funcs.push((*export_type, self.func_type(*export_type).clone()));
+                self.auxiliary_funcs.push((self.funcs.len(), idx, *export_type));
+                self.num_defined_funcs += 1;
+            }
+        }
+        Ok(())
     }
 
     fn arbitrary_tables(&mut self, u: &mut Unstructured) -> Result<()> {
@@ -879,22 +893,18 @@ where
         if self.funcs.len() > 0 && self.valid_export_types.len() > 0 {
             choices.push(|u, m| {
                 // Filtering out the indices of functions whose types allow them to be exported
+                // TODO (MRA) It's inefficient to keep iterating over every function every time we want to select an export
                 let mut exportable_funcs = Vec::new();
-                for (type_idx_opt, _) in m.funcs.iter() {
-                    match type_idx_opt {
-                        Some(type_idx) =>
-                            if m.valid_export_types.contains(type_idx) && m.funcs.as_slice()[*type_idx].0.is_some() {
-                                exportable_funcs.push(*type_idx);
-                            }
-                        None => ()
+                for (f_idx, (t_idx, _)) in m.funcs.iter().enumerate() {
+                    if m.valid_export_types.contains(t_idx) {
+                        exportable_funcs.push(f_idx);
                     }
                 }
                 if exportable_funcs.len() > 0 {
                     let idx = u.choose(exportable_funcs.as_slice())?;
-                    let type_id = m.funcs[*idx].0.unwrap();
-                    Ok(Export::Func(type_id as u32))
+                    Ok(Export::Func(*idx as u32))
                 } else {
-                    Err(todo!())
+                    panic!("At least one export function should always be defined.");
                 }
             });
         }
@@ -1085,10 +1095,33 @@ where
         self.code.reserve(self.num_defined_funcs);
         let mut allocs = CodeBuilderAllocations::new(self);
         for (_, ty) in self.funcs[self.funcs.len() - self.num_defined_funcs..].iter() {
-            let body = self.arbitrary_func_body(u, ty, &mut allocs, allow_invalid)?;
+            if !ty.auxiliary {
+                let body = self.arbitrary_func_body(u, ty, &mut allocs, allow_invalid)?;
+                self.code.push(body);
+            }
+        }
+        // Creating (non-arbitrary) code for auxiliary functions
+        for (_, callee_func_idx, required_type_idx) in self.auxiliary_funcs.iter() {
+            let body = self.auxiliary_func_body(*callee_func_idx, self.ty(*required_type_idx), &mut allocs)?;
             self.code.push(body);
         }
         Ok(())
+    }
+
+    fn auxiliary_func_body(&self,
+                           callee_func_idx: usize,
+                           required_type: &FuncType,
+                           allocs: &mut CodeBuilderAllocations<C>
+    ) -> Result<Code> {
+        let locals = Vec::new();
+        let mut builder = allocs.builder(required_type, &locals);
+        let callee_type = self.ty(callee_func_idx);
+        let body = builder.generate_auxiliary_fun_body(callee_func_idx, callee_type)?;
+        let instructions = Instructions::Generated(body);
+        Ok(Code {
+            locals,
+            instructions,
+        })
     }
 
     fn arbitrary_func_body(
@@ -1180,7 +1213,7 @@ pub(crate) fn arbitrary_loop(
     mut f: impl FnMut(&mut Unstructured) -> Result<bool>,
 ) -> Result<()> {
     assert!(max >= min);
-    for _ in 0..min {
+    for _ in 0..=min {
         if !f(u)? {
             break;
         }
@@ -1218,14 +1251,11 @@ fn unique_string(
 ) -> Result<String> {
     let init_str = String::from("init_");
     let init_len = init_str.len();
-    let prefix = if /*u.arbitrary()?*/ true { init_str } else { ascii_string(init_len, u)? }; // TODO (MRA) replace with arbitrary (uncomment)
-    let mut name;
-    loop {
-        name = prefix.clone();
-        name.push_str(ascii_string(max(max_size, max_size - init_len), u)?.as_str());
-        if !names.contains(&name) {
-            break;
-        }
+    let prefix = if u.arbitrary()? { init_str } else { ascii_string(init_len, u)? };
+    let mut name = prefix;
+    name.push_str(ascii_string(max(max_size, max_size - init_len), u)?.as_str());
+    while names.contains(&name) {
+        name.push_str(&format!("{}", names.len())); // TODO (MRA) this can exceed max length
     }
     names.insert(name.clone());
     Ok(name)
