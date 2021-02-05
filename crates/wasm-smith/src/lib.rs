@@ -64,7 +64,6 @@ use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;
 use crate::config::HostFunction;
-use std::cmp::{max, min};
 
 mod code_builder;
 mod config;
@@ -1233,8 +1232,7 @@ pub(crate) fn arbitrary_loop(
 }
 
 fn ascii_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
-    let size = u.arbitrary_len::<u8>()?;
-    let size = min(1, min(size, max_size));
+    let size = u.int_in_range(1..=max_size)?;
     let mut v = String::new();
     for _ in 0..=size {
         let c = char::from(65 + u8::arbitrary(u)? % (90 - 65)); // todo (MRA) all ASCI chars; these are just upper case letters
@@ -1249,11 +1247,19 @@ fn unique_string(
     names: &mut HashSet<String>,
     u: &mut Unstructured,
 ) -> Result<String> {
-    let init_str = String::from("init_");
-    let init_len = init_str.len();
-    let prefix = if u.arbitrary()? { init_str } else { ascii_string(init_len, u)? };
-    let mut name = prefix;
-    name.push_str(ascii_string(max(max_size, max_size - init_len), u)?.as_str());
+    let mut name;
+    if u.arbitrary()? {
+        let init_str = "init_";
+        assert!(max_size > init_str.len());
+        name = String::from("init_");
+        name.push_str(ascii_string(max_size - init_str.len(), u)?.as_str());
+    } else {
+        assert!(max_size > 1);
+        name = ascii_string(max_size - 1, u)?;
+        let idx = u.int_in_range(0..=name.len() - 1)?;
+        name.insert(idx, '.');
+        name.as_str();
+    }
     while names.contains(&name) {
         name.push_str(&format!("{}", names.len())); // TODO (MRA) this can exceed max length
     }

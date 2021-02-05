@@ -463,7 +463,6 @@ where
                 self.generate_operand_of_type(&mut instructions, &res),
             _ => ()
         }
-        self.end_active_control_frames(&mut instructions);
         Ok(instructions)
     }
 
