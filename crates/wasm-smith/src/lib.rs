@@ -156,6 +156,8 @@ where
     /// aliased).
     num_defined_tables: usize,
 
+    size_of_biggest_table: u32,
+
     /// The number of memories defined in this module (not imported or
     /// aliased).
     num_defined_memories: usize,
@@ -805,6 +807,9 @@ where
                 }
                 self.num_defined_tables += 1;
                 let ty = self.arbitrary_table_type(u)?;
+                if ty.limits.min > self.size_of_biggest_table {
+                    self.size_of_biggest_table = ty.limits.min;
+                }
                 self.tables.push(ty);
                 Ok(true)
             },
@@ -973,6 +978,7 @@ where
         let func_max = self.funcs.len() as u32;
         let table_tys = self.tables.iter().map(|t| t.elem_ty).collect::<Vec<_>>();
 
+        let biggest_table = self.size_of_biggest_table as i32;
         // Create a helper closure to choose an arbitrary offset.
         let mut offset_global_choices = vec![];
         for (i, g) in self.globals.iter().enumerate() {
@@ -985,7 +991,7 @@ where
                 let g = u.choose(&offset_global_choices)?;
                 Instruction::GlobalGet(*g)
             } else {
-                Instruction::I32Const(u.arbitrary()?)
+                Instruction::I32Const(u.int_in_range(i32::MIN..=biggest_table)?)
             })
         };
 
