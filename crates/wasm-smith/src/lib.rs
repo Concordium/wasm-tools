@@ -996,8 +996,9 @@ where
                 offset_global_choices.push(i as u32);
             }
         }
+        let allow_globalget = self.config.allow_globalget_in_elem_and_data_offsets();
         let arbitrary_offset = |u: &mut Unstructured| {
-            Ok(if !offset_global_choices.is_empty() && u.arbitrary()? {
+            Ok(if allow_globalget && !offset_global_choices.is_empty() && u.arbitrary()? {
                 let g = u.choose(&offset_global_choices)?;
                 Instruction::GlobalGet(*g)
             } else {
@@ -1187,12 +1188,14 @@ where
                 if choices.is_empty() {
                     choices.push(Box::new(|u| Ok(Instruction::I32Const(u.arbitrary()?))));
 
-                    for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
-                        .iter()
-                        .enumerate()
-                    {
-                        if !g.mutable && g.val_type == ValType::I32 {
-                            choices.push(Box::new(move |_| Ok(Instruction::GlobalGet(i as u32))));
+                    if self.config.allow_globalget_in_elem_and_data_offsets() {
+                        for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
+                            .iter()
+                            .enumerate()
+                        {
+                            if !g.mutable && g.val_type == ValType::I32 {
+                                choices.push(Box::new(move |_| Ok(Instruction::GlobalGet(i as u32))));
+                            }
                         }
                     }
                 }

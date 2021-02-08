@@ -244,6 +244,9 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// Allow arbitrary instructions?
     fn allow_arbitrary_instr(&self) -> bool { false }
+
+    /// Allow global reads in offsets of elem and data sections?
+    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { true }
 }
 
 /// The default configuration.
@@ -481,4 +484,6 @@ impl Config for InterpreterConfig {
     fn allowed_export_types(&self) -> Option<Vec<FuncType>> {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])
     }
+
+    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false } // TODO (MRA) When CB-1165 is done, set this to true
 }
