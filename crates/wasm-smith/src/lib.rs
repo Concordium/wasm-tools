@@ -1002,7 +1002,7 @@ where
                 let g = u.choose(&offset_global_choices)?;
                 Instruction::GlobalGet(*g)
             } else {
-                Instruction::I32Const(u.int_in_range(i32::MIN..=biggest_table)?)
+                Instruction::I32Const(u.int_in_range(0..=biggest_table)?)
             })
         };
 
@@ -1186,7 +1186,7 @@ where
             self.config.max_data_segments(),
             |u| {
                 if choices.is_empty() {
-                    choices.push(Box::new(|u| Ok(Instruction::I32Const(u.arbitrary()?))));
+                    choices.push(Box::new(|u| Ok(Instruction::I32Const(u.int_in_range(0..=i32::MAX)?))));
 
                     if self.config.allow_globalget_in_elem_and_data_offsets() {
                         for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
