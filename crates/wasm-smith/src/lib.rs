@@ -59,7 +59,7 @@ use std::str;
 
 use arbitrary::{Arbitrary, Result, Unstructured};
 
-pub use config::{Config, DefaultConfig, InterpreterConfig, SwarmConfig};
+pub use config::{Config, DefaultConfig, InterpreterConfig};
 use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;

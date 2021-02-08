@@ -1,6 +1,6 @@
 use arbitrary::{Arbitrary, Unstructured};
 use rand::{rngs::SmallRng, RngCore, SeedableRng};
-use wasm_smith::{Config, ConfiguredModule, Module, SwarmConfig, InterpreterConfig};
+use wasm_smith::{Config, ConfiguredModule, Module, InterpreterConfig};
 use wasmparser::{Validator, WasmFeatures};
 
 fn wasm_features() -> WasmFeatures {
