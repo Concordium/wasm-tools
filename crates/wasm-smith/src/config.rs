@@ -28,7 +28,7 @@ type FuncType = (Vec<ValType>, Option<ValType>);
 /// need to override the methods for things you want to change away from the
 /// default.
 pub trait Config: Arbitrary + Default + Clone {
-    /// The minimum number of types to generate. Defaults to 0.
+    /// The minimum number of types to generate, excluding types of imports and auxiliary export types. Defaults to 0.
     fn min_types(&self) -> usize {
         0
     }
@@ -458,6 +458,14 @@ impl Config for InterpreterConfig {
 
     fn min_exports(&self) -> usize {
         1
+    }
+
+    fn min_types(&self) -> usize {
+        1
+    }
+
+    fn min_funcs(&self) -> usize {
+        2
     }
 
     fn allow_start_export(&self) -> bool { false }

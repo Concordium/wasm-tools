@@ -532,8 +532,15 @@ impl<C> ConfiguredModule<C>
 where
     C: Config,
 {
+    fn validate_config(&self) {
+        let config = &self.config;
+        assert!(config.min_imports() <= config.min_funcs(),
+               "The min number of imports cannot exceed min number of functions.");
+    }
+
     fn build(&mut self, u: &mut Unstructured, allow_invalid: bool) -> Result<()> {
         self.config = C::arbitrary(u)?;
+        self.validate_config();
         self.valtypes.push(ValType::I32);
         self.valtypes.push(ValType::I64);
         if self.config.reference_types_enabled() {
@@ -554,20 +561,26 @@ where
     }
 
     fn arbitrary_initial_sections(&mut self, u: &mut Unstructured) -> Result<()> {
-        self.arbitrary_types(self.config.min_types(), u)?;
-        self.arbitrary_imports(self.config.min_imports(), u)?;
+        self.arbitrary_types(u)?;
+        self.arbitrary_imports(u)?;
         Ok(())
     }
 
-    fn arbitrary_types(&mut self, min: usize, u: &mut Unstructured) -> Result<()> {
+    fn arbitrary_types(&mut self, u: &mut Unstructured) -> Result<()> {
         // Note that we push to `self.initializers` immediately because types
         // can mention any previous types, so we need to ensure that after each
         // type is generated it's listed in the module's types so indexing will
         // succeed.
         let section_idx = self.initial_sections.len();
         self.initial_sections.push(InitialSection::Type(Vec::new()));
-        arbitrary_loop(u, min, self.config.max_types() - self.types.len(), |u| {
+        // TODO (MRA) Here we first generate non-host-function types and then host-function types. Intersperse them?
+        arbitrary_loop(u, self.config.min_types(), self.config.max_types() - self.types.len(), |u| {
             let ty = self.arbitrary_func_type(u)?;
+            self.add_type_to_initial_section(section_idx, ty);
+            Ok(true)
+        })?;
+        arbitrary_loop(u, self.config.min_imports(), self.config.max_imports(), |u| {
+            let ty = self.arbitrary_hf_func_type(u)?;
             self.add_type_to_initial_section(section_idx, ty);
             Ok(true)
         })?;
@@ -612,7 +625,7 @@ where
             } else {
                 &mut self.func_types
             };
-        let types_idx = self.types.len();
+        let types_idx = self.types.len(); // TODO (MRA) This is very brittle. It relies on the fact that after record_type is called we will add the type to `types`
         match self.config.allowed_export_types() {
             Some(types) => {
                 if ty.host_function.is_none() && types.contains(&(ty.params.clone(), ty.result.clone())) {
@@ -630,32 +643,24 @@ where
     }
 
     fn arbitrary_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
-        let mut choices: Vec<fn(&mut Unstructured, &mut ConfiguredModule<C>) -> Result<FuncType>> =
-            Vec::with_capacity(2);
-        // Adding non-host function choice
-        choices.push(|u, m| {
-            let mut params = vec![];
-            let mut result = None;
-            arbitrary_loop(u, 0, 20, |u| {
-                params.push(m.arbitrary_valtype(u)?);
-                Ok(true)
-            })?;
-            if u.arbitrary()? {
-                result = Some(m.arbitrary_valtype(u)?);
-            }
-            Ok(FuncType { params, result, host_function: None, auxiliary: false })
-        });
-        // Adding host-function choice
-        if !self.config().host_functions().is_empty() {
-            choices.push(|u, m| {
-                let hfs = m.config().host_functions();
-                let hf = u.choose(&hfs)?;
-                let ret_type = hf.result;
-                Ok(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()), auxiliary: false })
-            });
+        let mut params = vec![];
+        let mut result = None;
+        arbitrary_loop(u, 0, 20, |u| {
+            params.push(self.arbitrary_valtype(u)?);
+            Ok(true)
+        })?;
+        if u.arbitrary()? {
+            result = Some(self.arbitrary_valtype(u)?);
         }
-        let result = u.choose(&choices)?;
-        Ok(Rc::new(result(u, self)?))
+        Ok(Rc::new(FuncType { params, result, host_function: None, auxiliary: false }))
+    }
+
+    fn arbitrary_hf_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
+        assert!(!self.config().host_functions().is_empty(), "No host-function types specified");
+        let hfs = self.config().host_functions();
+        let hf = u.choose(&hfs)?;
+        let ret_type = hf.result;
+        Ok(Rc::new(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()), auxiliary: false }))
     }
 
     fn can_add_local_func(&self) -> bool {
@@ -678,9 +683,9 @@ where
        self.memories.len() < self.config.max_memories()
     }
 
-    fn arbitrary_imports(&mut self, min: usize, u: &mut Unstructured) -> Result<()> {
+    fn arbitrary_imports(&mut self, u: &mut Unstructured) -> Result<()> {
         let mut imports = Vec::new();
-        arbitrary_loop(u, min, self.config.max_imports() - self.num_imports, |u| {
+        arbitrary_loop(u, self.config.min_imports(), self.config.max_imports() - self.num_imports, |u| {
             if self.can_add_import_func() {
                 let idx = u.choose(&self.host_func_types)?;
                 let ty = self.func_type(*idx).clone();
@@ -776,7 +781,13 @@ where
             if !self.can_add_local_func() {
                 return Ok(false);
             }
-            let max = self.func_types.len() - 1;
+
+            let func_types = self.func_types.len();
+            let export_types = self.auxiliary_export_types.len();
+            // If all we created were export types, it means we don't have any types for functions, so we
+            // won't create any functions.
+            assert!(func_types > export_types, "We should have created at least one type for defined functions.");
+            let max = func_types - export_types - 1;
             let ty = self.func_types[u.int_in_range(0..=max)?];
             self.funcs.push((ty, self.func_type(ty).clone()));
             self.num_defined_funcs += 1;
@@ -787,9 +798,8 @@ where
         let defined_fun_len = self.num_defined_funcs;
         for export_type in self.auxiliary_export_types.iter() {
             for i in self.funcs.len() - defined_fun_len..self.funcs.len() {
-                let (idx, _) = self.funcs[i];
                 self.funcs.push((*export_type, self.func_type(*export_type).clone()));
-                self.auxiliary_funcs.push((self.funcs.len(), idx, *export_type));
+                self.auxiliary_funcs.push((self.funcs.len(), i, *export_type));
                 self.num_defined_funcs += 1;
             }
         }
@@ -1120,7 +1130,7 @@ where
     ) -> Result<Code> {
         let locals = Vec::new();
         let mut builder = allocs.builder(required_type, &locals);
-        let callee_type = self.ty(callee_func_idx);
+        let callee_type = &self.funcs[callee_func_idx].1;
         let body = builder.generate_auxiliary_fun_body(callee_func_idx, callee_type)?;
         let instructions = Instructions::Generated(body);
         Ok(Code {
