@@ -426,7 +426,6 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         I32WrapI64 => wasm_encoder::Instruction::I32WrapI64,
         I64ExtendI32S => wasm_encoder::Instruction::I64ExtendI32S,
         I64ExtendI32U => wasm_encoder::Instruction::I64ExtendI32U,
-        I64Extend32S => wasm_encoder::Instruction::I64Extend32S,
         TypedSelect(ty) => wasm_encoder::Instruction::TypedSelect(translate_val_type(ty)),
         RefNull(ty) => wasm_encoder::Instruction::RefNull(translate_val_type(ty)),
         RefIsNull => wasm_encoder::Instruction::RefIsNull,

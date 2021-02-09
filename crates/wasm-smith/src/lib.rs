@@ -502,7 +502,6 @@ enum Instruction {
     I32WrapI64,
     I64ExtendI32S,
     I64ExtendI32U,
-    I64Extend32S,
     TypedSelect(ValType),
     RefNull(ValType),
     RefIsNull,

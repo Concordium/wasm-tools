@@ -174,7 +174,6 @@ instructions! {
     (Some(i64_on_stack), i32_wrap_i64),
     (Some(i32_on_stack), i64_extend_i32_s),
     (Some(i32_on_stack), i64_extend_i32_u),
-    (Some(i64_on_stack), i64_extend_32_s),
     // reference types proposal
     (Some(ref_null_valid), ref_null),
     (Some(ref_func_valid), ref_func),
@@ -2007,16 +2006,6 @@ fn i64_extend_i32_u<C: Config>(
     builder.pop_operands(&[ValType::I32]);
     builder.push_operands(&[ValType::I64]);
     Ok(Instruction::I64ExtendI32U)
-}
-
-fn i64_extend_32_s<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I64]);
-    builder.push_operands(&[ValType::I64]);
-    Ok(Instruction::I64Extend32S)
 }
 
 fn memory_offset<C: Config>(
