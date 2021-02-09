@@ -64,6 +64,7 @@ use ValType::{I32, I64};
 
 use crate::code_builder::CodeBuilderAllocations;
 use crate::config::HostFunction;
+use std::cmp::{max, min};
 
 mod code_builder;
 mod config;
@@ -325,7 +326,7 @@ struct ElementSegment {
 }
 
 #[derive(Debug)]
-enum ElementKind {
+enum ElementKind { // TODO (MRA) get rid of single enum
     Active {
         table: Option<u32>, // None == table 0 implicitly
         offset: Instruction,
@@ -801,9 +802,8 @@ where
                 }
                 self.num_defined_tables += 1;
                 let ty = self.arbitrary_table_type(u)?;
-                if ty.limits.min > self.size_of_biggest_table {
-                    self.size_of_biggest_table = ty.limits.min;
-                }
+                let biggest_table = ty.limits.min;
+                self.size_of_biggest_table = max(self.size_of_biggest_table, biggest_table);
                 self.tables.push(ty);
                 Ok(true)
             },
@@ -830,16 +830,8 @@ where
                 }
                 self.num_defined_memories += 1;
                 let memory_type = self.arbitrary_memtype(u)?;
-                let max = memory_type.limits.max;
-                let min = memory_type.limits.min;
+                self.size_of_biggest_memory = max(memory_type.limits.min, self.size_of_biggest_memory);
                 self.memories.push(memory_type);
-                let memsize = match max {
-                    Some(max) => max,
-                    None => min,
-                };
-                if self.size_of_biggest_memory < memsize {
-                    self.size_of_biggest_memory = memsize;
-                }
                 Ok(true)
             },
         )
@@ -979,6 +971,9 @@ where
     }
 
     fn arbitrary_elems(&mut self, u: &mut Unstructured) -> Result<()> {
+        if self.size_of_biggest_table <= 0 {
+            return Ok(())
+        }
         let func_max = self.funcs.len() as u32;
         let table_tys = self.tables.iter().map(|t| t.elem_ty).collect::<Vec<_>>();
 
@@ -1000,26 +995,7 @@ where
             })
         };
 
-        let mut choices: Vec<Box<dyn Fn(&mut Unstructured) -> Result<(ElementKind, ValType)>>> =
-            Vec::new();
-
-        if table_tys.len() > 0 {
-            // If we have at least one table, then the MVP encoding is always
-            // available so long as it's a funcref table.
-            if table_tys[0] == ValType::FuncRef {
-                choices.push(Box::new(|u| {
-                    Ok((
-                        ElementKind::Active {
-                            table: None,
-                            offset: arbitrary_offset(u)?,
-                        },
-                        table_tys[0],
-                    ))
-                }));
-            }
-        }
-
-        if choices.is_empty() {
+        if table_tys.len() <= 0 {
             return Ok(());
         }
 
@@ -1030,14 +1006,34 @@ where
             |u| {
                 // Choose whether to generate a segment whose elements are initialized via
                 // expressions, or one whose elements are initialized via function indices.
-                let (kind, ty) = u.choose(&choices)?(u)?;
+                let offset_instr = arbitrary_offset(u)?;
+                let offset = match offset_instr {
+                    Instruction::GlobalGet(_) => {
+                        assert!(self.config.allow_globalget_in_elem_and_data_offsets(), "GlobalGet instruction in table offset currently not supported");
+                        0
+                    },
+                    Instruction::I32Const(c) => c as u32,
+                    Instruction::I64Const(c) => c as u32,
+                    _ => {
+                        panic!("Unsupported instruction in table offset")
+                    },
+                };
+                assert!(self.size_of_biggest_table >= offset);
+                let max_table_size = self.size_of_biggest_table - offset;
+                let min_elems = min(self.config.min_elements(), max_table_size as usize);
+                let max_elems = min(self.config.max_elements(), max_table_size as usize);
+                let kind = ElementKind::Active {
+                    table: None,
+                    offset: offset_instr,
+                };
+                let ty = table_tys[0];
                 let items = if ty == ValType::ExternRef
                 {
                     let mut init = vec![];
                     arbitrary_loop(
                         u,
-                        self.config.min_elements(),
-                        self.config.max_elements(),
+                        min_elems,
+                        max_elems,
                         |u| {
                             init.push(
                                 if ty == ValType::ExternRef || func_max == 0 || u.arbitrary()? {
@@ -1055,8 +1051,8 @@ where
                     if func_max > 0 {
                         arbitrary_loop(
                             u,
-                            self.config.min_elements(),
-                            self.config.max_elements(),
+                            min_elems,
+                            max_elems,
                             |u| {
                                 let func_idx = u.int_in_range(0..=func_max - 1)?;
                                 init.push(func_idx);
@@ -1200,7 +1196,7 @@ pub(crate) fn arbitrary_loop(
     mut f: impl FnMut(&mut Unstructured) -> Result<bool>,
 ) -> Result<()> {
     assert!(max >= min);
-    for _ in 0..=min {
+    for _ in 0..min {
         if !f(u)? {
             break;
         }

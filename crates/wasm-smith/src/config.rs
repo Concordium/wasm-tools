@@ -321,8 +321,6 @@ impl Config for InterpreterConfig {
 
     fn max_globals(&self) -> usize { 1024 }
 
-    fn max_memories(&self) -> usize { 512 } // this is arbitrary, doesn't come from spec
-
     fn max_init_table_size(&self) -> u32 { 1_000 }
 
     fn allowed_export_types(&self) -> Option<Vec<FuncType>> {
