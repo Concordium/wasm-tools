@@ -1120,6 +1120,9 @@ where
     }
 
     fn arbitrary_data(&mut self, u: &mut Unstructured) -> Result<()> {
+        if self.size_of_biggest_memory <= 0 {
+            return Ok(())
+        }
         // With bulk-memory we can generate passive data, otherwise if there are
         // no memories we can't generate any data.
         let memories = self.memories.len() as u32;
