@@ -87,6 +87,8 @@ pub struct Module {
     inner: ConfiguredModule<DefaultConfig>,
 }
 
+const PAGE_SIZE: u32 = 65536;
+
 /// A pseudo-random generated WebAssembly file with custom configuration.
 ///
 /// If you don't care about custom configuration, use [`Module`][crate::Module]
@@ -161,6 +163,8 @@ where
     /// The number of memories defined in this module (not imported or
     /// aliased).
     num_defined_memories: usize,
+
+    size_of_biggest_memory: u32,
 
     /// The indexes and initialization expressions of globals defined in this
     /// module.
@@ -845,7 +849,17 @@ where
                     return Ok(false);
                 }
                 self.num_defined_memories += 1;
-                self.memories.push(self.arbitrary_memtype(u)?);
+                let memory_type = self.arbitrary_memtype(u)?;
+                let max = memory_type.limits.max;
+                let min = memory_type.limits.min;
+                self.memories.push(memory_type);
+                let memsize = match max {
+                    Some(max) => max,
+                    None => min,
+                };
+                if self.size_of_biggest_memory < memsize {
+                    self.size_of_biggest_memory = memsize;
+                }
                 Ok(true)
             },
         )
@@ -1179,6 +1193,7 @@ where
         }
 
         let mut choices: Vec<Box<dyn Fn(&mut Unstructured) -> Result<Instruction>>> = vec![];
+        let mem_limit = (self.size_of_biggest_memory * PAGE_SIZE) as i32;
 
         arbitrary_loop(
             u,
@@ -1186,7 +1201,9 @@ where
             self.config.max_data_segments(),
             |u| {
                 if choices.is_empty() {
-                    choices.push(Box::new(|u| Ok(Instruction::I32Const(u.int_in_range(0..=i32::MAX)?))));
+                    choices.push(Box::new(move |u| {
+                        Ok(Instruction::I32Const(u.int_in_range(0..=mem_limit)?))
+                    }));
 
                     if self.config.allow_globalget_in_elem_and_data_offsets() {
                         for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
