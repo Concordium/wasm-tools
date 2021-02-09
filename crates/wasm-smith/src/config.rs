@@ -247,6 +247,9 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// Allow global reads in offsets of elem and data sections?
     fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { true }
+
+    /// Allow function block type?
+    fn allow_function_blocktype(&self) -> bool { false }
 }
 
 /// The default configuration.

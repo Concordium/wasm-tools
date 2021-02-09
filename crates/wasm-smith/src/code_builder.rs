@@ -412,7 +412,7 @@ where
         ];
 
         for (i, ty) in module.func_types() {
-            if self.types_on_stack(&ty.params) {
+            if self.types_on_stack(&ty.params) && module.config.allow_function_blocktype() {
                 options.push(Box::new(move |_| Ok(BlockType::FuncType(i))));
             }
         }
