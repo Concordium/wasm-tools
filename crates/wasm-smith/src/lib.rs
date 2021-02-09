@@ -839,8 +839,6 @@ where
     }
 
     fn arbitrary_globals(&mut self, u: &mut Unstructured) -> Result<()> {
-        let mut choices: Vec<Box<dyn Fn(&mut Unstructured, ValType) -> Result<Instruction>>> =
-            vec![];
 
         arbitrary_loop(
             u,
@@ -853,32 +851,20 @@ where
 
                 let ty = self.arbitrary_global_type(u)?;
 
-                choices.clear();
                 let num_funcs = self.funcs.len() as u32;
-                choices.push(Box::new(move |u, ty| {
-                    Ok(match ty {
-                        ValType::I32 => Instruction::I32Const(u.arbitrary()?),
-                        ValType::I64 => Instruction::I64Const(u.arbitrary()?),
-                        ValType::ExternRef => Instruction::RefNull(ValType::ExternRef),
-                        ValType::FuncRef => {
-                            if num_funcs > 0 && u.arbitrary()? {
-                                let func = u.int_in_range(0..=num_funcs - 1)?;
-                                Instruction::RefFunc(func)
-                            } else {
-                                Instruction::RefNull(ValType::FuncRef)
-                            }
+                let expr = match ty.val_type {
+                    ValType::I32 => Instruction::I32Const(u.arbitrary()?),
+                    ValType::I64 => Instruction::I64Const(u.arbitrary()?),
+                    ValType::ExternRef => Instruction::RefNull(ValType::ExternRef),
+                    ValType::FuncRef => {
+                        if num_funcs > 0 && u.arbitrary()? {
+                            let func = u.int_in_range(0..=num_funcs - 1)?;
+                            Instruction::RefFunc(func)
+                        } else {
+                            Instruction::RefNull(ValType::FuncRef)
                         }
-                    })
-                }));
-
-                for (i, g) in self.globals.iter().enumerate() {
-                    if !g.mutable && g.val_type == ty.val_type {
-                        choices.push(Box::new(move |_, _| Ok(Instruction::GlobalGet(i as u32))));
                     }
-                }
-
-                let f = u.choose(&choices)?;
-                let expr = f(u, ty.val_type)?;
+                };
                 let global_idx = self.globals.len() as u32;
                 self.globals.push(ty);
                 self.defined_globals.push((global_idx, expr));
