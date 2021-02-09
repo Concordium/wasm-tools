@@ -174,18 +174,6 @@ instructions! {
     (Some(i64_on_stack), i32_wrap_i64),
     (Some(i32_on_stack), i64_extend_i32_s),
     (Some(i32_on_stack), i64_extend_i32_u),
-    // reference types proposal
-    (Some(ref_null_valid), ref_null),
-    (Some(ref_func_valid), ref_func),
-    (Some(ref_is_null_valid), ref_is_null),
-    (Some(table_fill_valid), table_fill),
-    (Some(table_set_valid), table_set),
-    (Some(table_get_valid), table_get),
-    (Some(table_size_valid), table_size),
-    (Some(table_grow_valid), table_grow),
-    (Some(table_copy_valid), table_copy),
-    (Some(table_init_valid), table_init),
-    (Some(elem_drop_valid), elem_drop),
 }
 
 pub(crate) struct CodeBuilderAllocations<C>
@@ -216,13 +204,6 @@ where
 
     // Tables in this module which have a funcref element type.
     funcref_tables: Vec<u32>,
-
-    // Functions that are referenced in the module through globals and segments.
-    referenced_functions: Vec<u32>,
-
-    // Flag that indicates if any element segments have the same type as any
-    // table
-    table_init_possible: bool,
 }
 
 pub(crate) struct CodeBuilder<'a, C>
@@ -314,8 +295,6 @@ where
             }
         }
 
-        let table_init_possible = module.elems.iter().any(|e| table_tys.contains(&e.ty));
-
         CodeBuilderAllocations {
             controls: Vec::with_capacity(4),
             operands: Vec::with_capacity(16),
@@ -323,8 +302,6 @@ where
             functions,
             mutable_globals,
             funcref_tables,
-            referenced_functions: referenced_functions.into_iter().collect(),
-            table_init_possible,
         }
     }
 
@@ -2060,235 +2037,4 @@ fn data_index<C: Config>(u: &mut Unstructured, module: &ConfiguredModule<C>) -> 
     } else {
         u.int_in_range(0..=data - 1)
     }
-}
-
-#[inline]
-fn ref_null_valid<C: Config>(module: &ConfiguredModule<C>, _: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-}
-
-fn ref_null<C: Config>(
-    u: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    let ty = *u.choose(&[ValType::ExternRef, ValType::FuncRef])?;
-    builder.push_operands(&[ty]);
-    Ok(Instruction::RefNull(ty))
-}
-
-#[inline]
-fn ref_func_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled() && builder.allocs.referenced_functions.len() > 0
-}
-
-fn ref_func<C: Config>(
-    u: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    let i = *u.choose(&builder.allocs.referenced_functions)?;
-    builder.push_operands(&[ValType::FuncRef]);
-    Ok(Instruction::RefFunc(i))
-}
-
-#[inline]
-fn ref_is_null_valid<C: Config>(
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> bool {
-    module.config.reference_types_enabled()
-        && (builder.type_on_stack(ValType::ExternRef) || builder.type_on_stack(ValType::FuncRef))
-}
-
-fn ref_is_null<C: Config>(
-    _: &mut Unstructured,
-    _: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    pop_reference_type(builder);
-    builder.push_operands(&[ValType::I32]);
-    Ok(Instruction::RefIsNull)
-}
-
-#[inline]
-fn table_fill_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && module.config.bulk_memory_enabled()
-        && [ValType::ExternRef, ValType::FuncRef].iter().any(|ty| {
-            builder.types_on_stack(&[ValType::I32, *ty, ValType::I32])
-                && module.tables.iter().any(|t| t.elem_ty == *ty)
-        })
-}
-
-fn table_fill<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32]);
-    let ty = pop_reference_type(builder);
-    builder.pop_operands(&[ValType::I32]);
-    let table = table_index(ty, u, module)?;
-    Ok(Instruction::TableFill { table })
-}
-
-#[inline]
-fn table_set_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && [ValType::ExternRef, ValType::FuncRef].iter().any(|ty| {
-            builder.types_on_stack(&[ValType::I32, *ty])
-                && module.tables.iter().any(|t| t.elem_ty == *ty)
-        })
-}
-
-fn table_set<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    let ty = pop_reference_type(builder);
-    builder.pop_operands(&[ValType::I32]);
-    let table = table_index(ty, u, module)?;
-    Ok(Instruction::TableSet { table })
-}
-
-#[inline]
-fn table_get_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && builder.type_on_stack(ValType::I32)
-        && module.tables.len() > 0
-}
-
-fn table_get<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32]);
-    let idx = u.int_in_range(0..=module.tables.len() - 1)?;
-    let ty = module.tables[idx].elem_ty;
-    builder.push_operands(&[ty]);
-    Ok(Instruction::TableGet { table: idx as u32 })
-}
-
-#[inline]
-fn table_size_valid<C: Config>(module: &ConfiguredModule<C>, _: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled() && module.tables.len() > 0
-}
-
-fn table_size<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    let table = u.int_in_range(0..=module.tables.len() - 1)? as u32;
-    builder.push_operands(&[ValType::I32]);
-    Ok(Instruction::TableSize { table })
-}
-
-#[inline]
-fn table_grow_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && [ValType::ExternRef, ValType::FuncRef].iter().any(|ty| {
-            builder.types_on_stack(&[*ty, ValType::I32])
-                && module.tables.iter().any(|t| t.elem_ty == *ty)
-        })
-}
-
-fn table_grow<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32]);
-    let ty = pop_reference_type(builder);
-    let table = table_index(ty, u, module)?;
-    builder.push_operands(&[ValType::I32]);
-    Ok(Instruction::TableGrow { table })
-}
-
-#[inline]
-fn table_copy_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && module.tables.len() > 0
-        && builder.types_on_stack(&[ValType::I32, ValType::I32, ValType::I32])
-}
-
-fn table_copy<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32, ValType::I32, ValType::I32]);
-    let src = u.int_in_range(0..=module.tables.len() - 1)? as u32;
-    let dst = table_index(module.tables[src as usize].elem_ty, u, module)?;
-    Ok(Instruction::TableCopy { src, dst })
-}
-
-#[inline]
-fn table_init_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled()
-        && builder.allocs.table_init_possible
-        && builder.types_on_stack(&[ValType::I32, ValType::I32, ValType::I32])
-}
-
-fn table_init<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    builder.pop_operands(&[ValType::I32, ValType::I32, ValType::I32]);
-    let segments = module
-        .elems
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| module.tables.iter().any(|t| t.elem_ty == e.ty))
-        .map(|(i, _)| i)
-        .collect::<Vec<_>>();
-    let segment = *u.choose(&segments)?;
-    let table = table_index(module.elems[segment].ty, u, module)?;
-    Ok(Instruction::TableInit {
-        segment: segment as u32,
-        table,
-    })
-}
-
-#[inline]
-fn elem_drop_valid<C: Config>(module: &ConfiguredModule<C>, _builder: &mut CodeBuilder<C>) -> bool {
-    module.config.reference_types_enabled() && module.elems.len() > 0
-}
-
-fn elem_drop<C: Config>(
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-    _builder: &mut CodeBuilder<C>,
-) -> Result<Instruction> {
-    let segment = u.int_in_range(0..=module.elems.len() - 1)? as u32;
-    Ok(Instruction::ElemDrop { segment })
-}
-
-fn pop_reference_type<C: Config>(builder: &mut CodeBuilder<C>) -> ValType {
-    if builder.type_on_stack(ValType::ExternRef) {
-        builder.pop_operands(&[ValType::ExternRef]);
-        ValType::ExternRef
-    } else {
-        builder.pop_operands(&[ValType::FuncRef]);
-        ValType::FuncRef
-    }
-}
-
-fn table_index<C: Config>(
-    ty: ValType,
-    u: &mut Unstructured,
-    module: &ConfiguredModule<C>,
-) -> Result<u32> {
-    let tables = module
-        .tables
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t.elem_ty == ty)
-        .map(|t| t.0 as u32)
-        .collect::<Vec<_>>();
-    Ok(*u.choose(&tables)?)
 }

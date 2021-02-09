@@ -162,12 +162,6 @@ where
                 ElementKind::Active { table, offset } => {
                     elems.active(*table, translate_instruction(offset), elem_ty, elements);
                 }
-                ElementKind::Passive => {
-                    elems.passive(elem_ty, elements);
-                }
-                ElementKind::Declared => {
-                    elems.declared(elem_ty, elements);
-                }
             }
         }
         module.section(&elems);
@@ -428,15 +422,6 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         I64ExtendI32U => wasm_encoder::Instruction::I64ExtendI32U,
         TypedSelect(ty) => wasm_encoder::Instruction::TypedSelect(translate_val_type(ty)),
         RefNull(ty) => wasm_encoder::Instruction::RefNull(translate_val_type(ty)),
-        RefIsNull => wasm_encoder::Instruction::RefIsNull,
         RefFunc(x) => wasm_encoder::Instruction::RefFunc(x),
-        TableInit { segment, table } => wasm_encoder::Instruction::TableInit { segment, table },
-        ElemDrop { segment } => wasm_encoder::Instruction::ElemDrop { segment },
-        TableFill { table } => wasm_encoder::Instruction::TableFill { table },
-        TableSet { table } => wasm_encoder::Instruction::TableSet { table },
-        TableGet { table } => wasm_encoder::Instruction::TableGet { table },
-        TableGrow { table } => wasm_encoder::Instruction::TableGrow { table },
-        TableSize { table } => wasm_encoder::Instruction::TableSize { table },
-        TableCopy { src, dst } => wasm_encoder::Instruction::TableCopy { src, dst },
     }
 }

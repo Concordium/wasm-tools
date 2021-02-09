@@ -228,12 +228,6 @@ pub trait Config: Arbitrary + Default + Clone {
         false
     }
 
-    /// Determines whether the reference types proposal is enabled for
-    /// generating insructions. Defaults to `false`.
-    fn reference_types_enabled(&self) -> bool {
-        false
-    }
-
     /// Determines whether a `start` export may be included. Defaults to `true`.
     fn allow_start_export(&self) -> bool {
         true

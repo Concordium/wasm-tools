@@ -326,8 +326,6 @@ struct ElementSegment {
 
 #[derive(Debug)]
 enum ElementKind {
-    Passive,
-    Declared,
     Active {
         table: Option<u32>, // None == table 0 implicitly
         offset: Instruction,
@@ -504,16 +502,7 @@ enum Instruction {
     I64ExtendI32U,
     TypedSelect(ValType),
     RefNull(ValType),
-    RefIsNull,
     RefFunc(u32),
-    TableInit { segment: u32, table: u32 },
-    ElemDrop { segment: u32 },
-    TableFill { table: u32 },
-    TableSet { table: u32 },
-    TableGet { table: u32 },
-    TableGrow { table: u32 },
-    TableSize { table: u32 },
-    TableCopy { src: u32, dst: u32 },
 }
 
 #[derive(Debug)]
@@ -546,10 +535,6 @@ where
         self.validate_config();
         self.valtypes.push(ValType::I32);
         self.valtypes.push(ValType::I64);
-        if self.config.reference_types_enabled() {
-            self.valtypes.push(ValType::ExternRef);
-            self.valtypes.push(ValType::FuncRef);
-        }
         self.arbitrary_initial_sections(u)?;
         self.arbitrary_funcs(u)?;
         self.arbitrary_tables(u)?;
@@ -766,11 +751,7 @@ where
 
     fn arbitrary_table_type(&self, u: &mut Unstructured) -> Result<TableType> {
         Ok(TableType {
-            elem_ty: if self.config.reference_types_enabled() {
-                *u.choose(&[ValType::FuncRef, ValType::ExternRef])?
-            } else {
-                ValType::FuncRef
-            },
+            elem_ty: ValType::FuncRef,
             limits: Limits::limited(u, self.config.max_init_table_size(), false)?,
         })
     }
@@ -1036,33 +1017,6 @@ where
                     ))
                 }));
             }
-
-            // If we have reference types enabled, then we can initialize any
-            // table, and we can also use the alternate encoding to initialize
-            // the 0th table.
-            if self.config.reference_types_enabled() {
-                choices.push(Box::new(|u| {
-                    let i = u.int_in_range(0..=table_tys.len() - 1)? as u32;
-                    Ok((
-                        ElementKind::Active {
-                            table: Some(i),
-                            offset: arbitrary_offset(u)?,
-                        },
-                        table_tys[i as usize],
-                    ))
-                }));
-            }
-        }
-
-        // Reference types allows us to create passive and declared element
-        // segments.
-        if self.config.reference_types_enabled() {
-            choices.push(Box::new(|_| Ok((ElementKind::Passive, ValType::FuncRef))));
-            choices.push(Box::new(|_| Ok((ElementKind::Passive, ValType::ExternRef))));
-            choices.push(Box::new(|_| Ok((ElementKind::Declared, ValType::FuncRef))));
-            choices.push(Box::new(|_| {
-                Ok((ElementKind::Declared, ValType::ExternRef))
-            }));
         }
 
         if choices.is_empty() {
@@ -1078,7 +1032,6 @@ where
                 // expressions, or one whose elements are initialized via function indices.
                 let (kind, ty) = u.choose(&choices)?(u)?;
                 let items = if ty == ValType::ExternRef
-                    || (self.config.reference_types_enabled() && u.arbitrary()?)
                 {
                     let mut init = vec![];
                     arbitrary_loop(
