@@ -65,6 +65,7 @@ use ValType::{I32, I64};
 use crate::code_builder::CodeBuilderAllocations;
 use crate::config::HostFunction;
 use std::cmp::{max, min};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 mod code_builder;
 mod config;
@@ -1226,6 +1227,8 @@ fn ascii_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
     Ok(v)
 }
 
+static NAME_COUNTER: AtomicU8 = AtomicU8::new(0);
+
 fn unique_string(
     max_size: usize,
     names: &mut HashSet<String>,
@@ -1245,7 +1248,11 @@ fn unique_string(
         name.as_str();
     }
     while names.contains(&name) {
-        name.push_str(&format!("{}", names.len())); // TODO (MRA) this can exceed max length
+        let ctr = NAME_COUNTER.load(Ordering::SeqCst);
+        name.push_str(&format!("{}", ctr));
+        if name.len() > max_size {
+            name.remove(0);
+        }
     }
     names.insert(name.clone());
     Ok(name)
