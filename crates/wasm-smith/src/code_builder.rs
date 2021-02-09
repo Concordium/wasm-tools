@@ -434,6 +434,9 @@ where
             self.generate_operand_of_type(&mut instructions, param_type)
         }
         instructions.push(Instruction::Call(callee_idx as u32));
+        if callee_type.result.is_some() {
+            instructions.push(Instruction::Drop);
+        }
         match self.func_ty.result {
             Some(res) =>
                 self.generate_operand_of_type(&mut instructions, &res),
