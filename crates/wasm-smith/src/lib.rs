@@ -1239,7 +1239,7 @@ fn unique_string(
     while names.contains(&name) {
         let ctr = NAME_COUNTER.load(Ordering::SeqCst);
         name.push_str(&format!("{}", ctr));
-        if name.len() > max_size {
+        while name.len() > max_size {
             name.remove(0);
         }
     }
