@@ -1,5 +1,4 @@
 use super::*;
-use std::convert::TryFrom;
 
 impl Module {
     /// Encode this Wasm module into bytes.
@@ -35,7 +34,6 @@ where
         self.encode_exports(&mut module);
         self.encode_start(&mut module);
         self.encode_elems(&mut module);
-        self.encode_data_count(&mut module);
         self.encode_code(&mut module);
         self.encode_data(&mut module);
 
@@ -169,20 +167,6 @@ where
         module.section(&elems);
     }
 
-    fn encode_data_count(&self, module: &mut wasm_encoder::Module) {
-        // Without bulk memory there's no need for a data count section,
-        if !self.config.bulk_memory_enabled() {
-            return;
-        }
-        // ... and also if there's no data no need for a data count section.
-        if self.data.is_empty() {
-            return;
-        }
-        module.section(&wasm_encoder::DataCountSection {
-            count: u32::try_from(self.data.len()).unwrap(),
-        });
-    }
-
     fn encode_code(&self, module: &mut wasm_encoder::Module) {
         if self.code.is_empty() {
             return;
@@ -225,9 +209,6 @@ where
                         translate_instruction(offset),
                         seg.init.iter().copied(),
                     );
-                }
-                DataSegmentKind::Passive => {
-                    data.passive(seg.init.iter().copied());
                 }
             }
         }
@@ -359,22 +340,6 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         I64Store32(m) => wasm_encoder::Instruction::I64Store32(translate_mem_arg(m)),
         MemorySize(x) => wasm_encoder::Instruction::MemorySize(x),
         MemoryGrow(x) => wasm_encoder::Instruction::MemoryGrow(x),
-        MemoryInit {
-            mem,
-            data,
-        } => wasm_encoder::Instruction::MemoryInit {
-            mem,
-            data,
-        },
-        DataDrop(x) => wasm_encoder::Instruction::DataDrop(x),
-        MemoryCopy {
-            src,
-            dst,
-        } => wasm_encoder::Instruction::MemoryCopy {
-            src,
-            dst,
-        },
-        MemoryFill(x) => wasm_encoder::Instruction::MemoryFill(x),
 
         // Numeric instructions.
         I32Const(x) => wasm_encoder::Instruction::I32Const(x),

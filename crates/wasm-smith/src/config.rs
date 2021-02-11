@@ -174,10 +174,6 @@ pub trait Config: Arbitrary + Default + Clone {
     /// otherwise be smaller than number returned here.
     fn min_uleb_size(&self) -> u8 { 1 }
 
-    /// Determines whether the bulk memory proposal is enabled for generating
-    /// insructions. Defaults to `false`.
-    fn bulk_memory_enabled(&self) -> bool { false }
-
     /// Determines whether a `start` export may be included. Defaults to `true`.
     fn allow_start_export(&self) -> bool { true }
 

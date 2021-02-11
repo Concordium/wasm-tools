@@ -444,16 +444,6 @@ enum Instruction {
     I64Store32(MemArg),
     MemorySize(u32),
     MemoryGrow(u32),
-    MemoryInit {
-        mem:  u32,
-        data: u32,
-    },
-    DataDrop(u32),
-    MemoryCopy {
-        src: u32,
-        dst: u32,
-    },
-    MemoryFill(u32),
 
     // Numeric instructions.
     I32Const(i32),
@@ -531,8 +521,7 @@ struct DataSegment {
 }
 
 #[derive(Debug)]
-enum DataSegmentKind {
-    Passive,
+enum DataSegmentKind { // TODO (MRA) convert to struct
     Active {
         memory_index: u32,
         offset:       Instruction,
@@ -1168,7 +1157,7 @@ where
         // With bulk-memory we can generate passive data, otherwise if there are
         // no memories we can't generate any data.
         let memories = self.memories.len() as u32;
-        if memories == 0 && !self.config.bulk_memory_enabled() {
+        if memories == 0 {
             return Ok(());
         }
 
@@ -1197,16 +1186,12 @@ where
             // Otherwise if there are no memories we *only* generate passive
             // data. Finally if all conditions are met we use an input byte to
             // determine if it should be passive or active.
-            let kind = if self.config.bulk_memory_enabled() && (memories == 0 || u.arbitrary()?) {
-                DataSegmentKind::Passive
-            } else {
-                let f = u.choose(&choices)?;
-                let offset = f(u)?;
-                let memory_index = u.int_in_range(0..=memories - 1)?;
-                DataSegmentKind::Active {
-                    offset,
-                    memory_index,
-                }
+            let f = u.choose(&choices)?;
+            let offset = f(u)?;
+            let memory_index = u.int_in_range(0..=memories - 1)?;
+            let kind = DataSegmentKind::Active {
+                offset,
+                memory_index,
             };
             let init = u.arbitrary()?;
             self.data.push(DataSegment {
