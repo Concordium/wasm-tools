@@ -959,9 +959,8 @@ where
             return Ok(());
         }
 
-        let mut export_names = HashSet::new();
         arbitrary_loop(u, self.config.min_exports(), self.config.max_exports(), |u| {
-            let name = unique_string(100, &mut export_names, u)?;
+            let name = unique_string()?;
             let f = u.choose(&choices)?;
             let export = f(u, self)?;
             self.exports.push((name, export));
@@ -1241,45 +1240,14 @@ pub(crate) fn arbitrary_loop(
     Ok(())
 }
 
-fn ascii_string(max_size: usize, u: &mut Unstructured) -> Result<String> {
-    let size = u.int_in_range(1..=max_size)?;
-    let mut v = String::new();
-    for _ in 0..=size {
-        let c = char::from(65 + u8::arbitrary(u)? % (90 - 65)); // todo (MRA) all ASCI chars; these are just upper case letters
-        v.push(c);
-        assert!(String::from(c).is_ascii());
-    }
-    Ok(v)
-}
-
 static NAME_COUNTER: AtomicU8 = AtomicU8::new(0);
 
-fn unique_string(
-    max_size: usize,
-    names: &mut HashSet<String>,
-    u: &mut Unstructured,
-) -> Result<String> {
-    let mut name;
-    if u.arbitrary()? {
-        let init_str = "init_";
-        assert!(max_size > init_str.len());
-        name = String::from("init_");
-        name.push_str(ascii_string(max_size - init_str.len(), u)?.as_str());
-    } else {
-        assert!(max_size > 1);
-        name = ascii_string(max_size - 1, u)?;
-        let idx = u.int_in_range(0..=name.len() - 1)?;
-        name.insert(idx, '.');
-        name.as_str();
-    }
-    while names.contains(&name) {
-        let ctr = NAME_COUNTER.load(Ordering::SeqCst);
-        name.push_str(&format!("{}", ctr));
-        while name.len() > max_size {
-            name.remove(0);
-        }
-    }
-    names.insert(name.clone());
+// TODO (MRA) We should also test ascii strings of different lengths but that's lower priority.
+fn unique_string() -> Result<String> {
+    let ctr = NAME_COUNTER.load(Ordering::SeqCst);
+    let mut name = String::from(if ctr % 2 == 0 { "init_" } else { "receive." });
+    name.push_str(format!("{}", ctr).as_str());
+    NAME_COUNTER.fetch_add(1, Ordering::SeqCst);
     Ok(name)
 }
 
