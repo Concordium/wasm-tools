@@ -93,6 +93,14 @@ pub trait Config: Arbitrary + Default + Clone {
     /// 100.
     fn max_elements(&self) -> usize { 100 }
 
+    /// The minimum number of dataelements within a data segment to generate.
+    /// Defaults to 0.
+    fn min_data_elements(&self) -> usize { 0 }
+
+    /// The maximum number of elements within a segment to generate. Defaults to
+    /// 100.
+    fn max_data_elements(&self) -> usize { 100 }
+
     /// The minimum number of data segments to generate. Defaults to 0.
     fn min_data_segments(&self) -> usize { 0 }
 

@@ -521,7 +521,8 @@ struct DataSegment {
 }
 
 #[derive(Debug)]
-enum DataSegmentKind { // TODO (MRA) convert to struct
+enum DataSegmentKind {
+    // TODO (MRA) convert to struct
     Active {
         memory_index: u32,
         offset:       Instruction,
@@ -1188,12 +1189,23 @@ where
             // determine if it should be passive or active.
             let f = u.choose(&choices)?;
             let offset = f(u)?;
+            let offset_amount = match offset {
+                Instruction::I32Const(n) => n,
+                _ => 0,
+            };
             let memory_index = u.int_in_range(0..=memories - 1)?;
             let kind = DataSegmentKind::Active {
                 offset,
                 memory_index,
             };
-            let init = u.arbitrary()?;
+            let mut init = Vec::new();
+            let data_elem_limit = mem_limit - offset_amount;
+            let min_data_elems = min(self.config.min_data_elements(), data_elem_limit as usize);
+            let max_data_elems = min(self.config.max_data_elements(), data_elem_limit as usize);
+            arbitrary_loop(u, min_data_elems, max_data_elems, |u| {
+                init.push(u.arbitrary()?);
+                Ok(true)
+            })?;
             self.data.push(DataSegment {
                 kind,
                 init,
