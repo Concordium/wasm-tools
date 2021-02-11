@@ -26,8 +26,8 @@
 //!
 //! ```
 //! use wasm_encoder::{
-//!     CodeSection, Export, ExportSection, Function, FunctionSection, Instruction,
-//!     Module, TypeSection, ValType,
+//!     CodeSection, Export, ExportSection, Function, FunctionSection, Instruction, Module,
+//!     TypeSection, ValType,
 //! };
 //!
 //! let mut module = Module::new();
@@ -140,14 +140,11 @@ pub struct RawSection<'a> {
 }
 
 impl Section for RawSection<'_> {
-    fn id(&self) -> u8 {
-        self.id
-    }
+    fn id(&self) -> u8 { self.id }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         sink.extend(
             encoders::u32(u32::try_from(self.data.len()).unwrap()).chain(self.data.iter().copied()),
         );
@@ -183,15 +180,11 @@ impl Module {
     }
 
     /// Get the encoded Wasm module as a slice.
-    pub fn as_slice(&self) -> &[u8] {
-        &self.bytes
-    }
+    pub fn as_slice(&self) -> &[u8] { &self.bytes }
 
     /// Finish writing this Wasm module and extract ownership of the encoded
     /// bytes.
-    pub fn finish(self) -> Vec<u8> {
-        self.bytes
-    }
+    pub fn finish(self) -> Vec<u8> { self.bytes }
 }
 
 /// Known section IDs.
@@ -202,29 +195,27 @@ impl Module {
 #[repr(u8)]
 #[allow(missing_docs)]
 pub enum SectionId {
-    Custom = 0,
-    Type = 1,
-    Import = 2,
-    Function = 3,
-    Table = 4,
-    Memory = 5,
-    Global = 6,
-    Export = 7,
-    Start = 8,
-    Element = 9,
-    Code = 10,
-    Data = 11,
+    Custom    = 0,
+    Type      = 1,
+    Import    = 2,
+    Function  = 3,
+    Table     = 4,
+    Memory    = 5,
+    Global    = 6,
+    Export    = 7,
+    Start     = 8,
+    Element   = 9,
+    Code      = 10,
+    Data      = 11,
     DataCount = 12,
-    Module = 14,
-    Instance = 15,
-    Alias = 16,
+    Module    = 14,
+    Instance  = 15,
+    Alias     = 16,
 }
 
 impl From<SectionId> for u8 {
     #[inline]
-    fn from(id: SectionId) -> u8 {
-        id as u8
-    }
+    fn from(id: SectionId) -> u8 { id as u8 }
 }
 
 /// Limits for a table or memory.
@@ -253,22 +244,22 @@ impl Limits {
 #[repr(u8)]
 pub enum ValType {
     /// The `i32` type.
-    I32 = 0x7F,
+    I32       = 0x7F,
     /// The `i64` type.
-    I64 = 0x7E,
+    I64       = 0x7E,
     /// The `f32` type.
-    F32 = 0x7D,
+    F32       = 0x7D,
     /// The `f64` type.
-    F64 = 0x7C,
+    F64       = 0x7C,
     /// The `v128` type.
     ///
     /// Part of the SIMD proposal.
-    V128 = 0x7B,
+    V128      = 0x7B,
     /// The `funcref` type.
     ///
     /// Part of the reference types proposal when used anywhere other than a
     /// table's element type.
-    FuncRef = 0x70,
+    FuncRef   = 0x70,
     /// The `externref` type.
     ///
     /// Part of the reference types proposal.
@@ -277,7 +268,5 @@ pub enum ValType {
 
 impl From<ValType> for u8 {
     #[inline]
-    fn from(t: ValType) -> u8 {
-        t as u8
-    }
+    fn from(t: ValType) -> u8 { t as u8 }
 }

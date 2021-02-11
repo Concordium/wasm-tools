@@ -21,23 +21,22 @@ use super::{
 #[derive(Clone)]
 pub struct TableSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> TableSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<TableSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(TableSectionReader { reader, count })
+        Ok(TableSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the table section.
     ///
@@ -52,38 +51,28 @@ impl<'a> TableSectionReader<'a> {
     ///     println!("Table: {:?}", table);
     /// }
     /// ```
-    pub fn read(&mut self) -> Result<TableType> {
-        self.reader.read_table_type()
-    }
+    pub fn read(&mut self) -> Result<TableType> { self.reader.read_table_type() }
 }
 
 impl<'a> SectionReader for TableSectionReader<'a> {
     type Item = TableType;
-    fn read(&mut self) -> Result<Self::Item> {
-        TableSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        TableSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { TableSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { TableSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for TableSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        TableSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { TableSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for TableSectionReader<'a> {
-    type Item = Result<TableType>;
     type IntoIter = SectionIteratorLimited<TableSectionReader<'a>>;
+    type Item = Result<TableType>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

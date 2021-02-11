@@ -6,11 +6,14 @@
 //! [`Parse`](crate::parser::Parse) trait for defining new fragments of
 //! WebAssembly text syntax.
 //!
-//! The top-level [`parse`](crate::parser::parse) function can be used to fully parse AST fragments:
+//! The top-level [`parse`](crate::parser::parse) function can be used to fully
+//! parse AST fragments:
 //!
 //! ```
-//! use wast::Wat;
-//! use wast::parser::{self, ParseBuffer};
+//! use wast::{
+//!     parser::{self, ParseBuffer},
+//!     Wat,
+//! };
 //!
 //! # fn foo() -> Result<(), wast::Error> {
 //! let wat = "(module (func))";
@@ -24,13 +27,16 @@
 //! [`Parse`](crate::parser::Parse) trait:
 //!
 //! ```
-//! use wast::{kw, Import, Func};
-//! use wast::parser::{Parser, Parse, Result};
+//! use wast::{
+//!     kw,
+//!     parser::{Parse, Parser, Result},
+//!     Func, Import,
+//! };
 //!
 //! // Fields of a WebAssembly which only allow imports and functions, and all
 //! // imports must come before all the functions
 //! struct OnlyImportsAndFunctions<'a> {
-//!     imports: Vec<Import<'a>>,
+//!     imports:   Vec<Import<'a>>,
 //!     functions: Vec<Func<'a>>,
 //! }
 //!
@@ -55,7 +61,10 @@
 //!             functions.push(func);
 //!         }
 //!
-//!         Ok(OnlyImportsAndFunctions { imports, functions })
+//!         Ok(OnlyImportsAndFunctions {
+//!             imports,
+//!             functions,
+//!         })
 //!     }
 //! }
 //! ```
@@ -63,12 +72,15 @@
 //! This module is heavily inspired by [`syn`](https://docs.rs/syn) so you can
 //! likely also draw inspiration from the excellent examples in the `syn` crate.
 
-use crate::lexer::{Float, Integer, Lexer, Token};
-use crate::{Error, Span};
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::fmt;
-use std::usize;
+use crate::{
+    lexer::{Float, Integer, Lexer, Token},
+    Error, Span,
+};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    fmt, usize,
+};
 
 /// A top-level convenience parseing function that parss a `T` from `buf` and
 /// requires that all tokens in `buf` are consume.
@@ -79,8 +91,10 @@ use std::usize;
 /// # Examples
 ///
 /// ```
-/// use wast::Wat;
-/// use wast::parser::{self, ParseBuffer};
+/// use wast::{
+///     parser::{self, ParseBuffer},
+///     Wat,
+/// };
 ///
 /// # fn foo() -> Result<(), wast::Error> {
 /// let wat = "(module (func))";
@@ -170,13 +184,16 @@ pub fn parse<'a, T: Parse<'a>>(buf: &'a ParseBuffer<'a>) -> Result<T> {
 /// before all functions. An example [`Parse`] implementation might look like:
 ///
 /// ```
-/// use wast::{Import, Func, kw};
-/// use wast::parser::{Parser, Parse, Result};
+/// use wast::{
+///     kw,
+///     parser::{Parse, Parser, Result},
+///     Func, Import,
+/// };
 ///
 /// // Fields of a WebAssembly which only allow imports and functions, and all
 /// // imports must come before all the functions
 /// struct OnlyImportsAndFunctions<'a> {
-///     imports: Vec<Import<'a>>,
+///     imports:   Vec<Import<'a>>,
 ///     functions: Vec<Func<'a>>,
 /// }
 ///
@@ -201,7 +218,10 @@ pub fn parse<'a, T: Parse<'a>>(buf: &'a ParseBuffer<'a>) -> Result<T> {
 ///             functions.push(func);
 ///         }
 ///
-///         Ok(OnlyImportsAndFunctions { imports, functions })
+///         Ok(OnlyImportsAndFunctions {
+///             imports,
+///             functions,
+///         })
 ///     }
 /// }
 /// ```
@@ -279,11 +299,11 @@ pub struct ParseBuffer<'a> {
     // list of tokens from the tokenized source (including whitespace and
     // comments), and the second element is how to skip this token, if it can be
     // skipped.
-    tokens: Box<[(Token<'a>, Cell<NextTokenAt>)]>,
-    input: &'a str,
-    cur: Cell<usize>,
+    tokens:            Box<[(Token<'a>, Cell<NextTokenAt>)]>,
+    input:             &'a str,
+    cur:               Cell<usize>,
     known_annotations: RefCell<HashMap<String, usize>>,
-    depth: Cell<usize>,
+    depth:             Cell<usize>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -314,7 +334,7 @@ pub struct Parser<'a> {
 ///
 /// For more information see the [`Parser::lookahead1`] method.
 pub struct Lookahead1<'a> {
-    parser: Parser<'a>,
+    parser:   Parser<'a>,
     attempts: Vec<&'static str>,
 }
 
@@ -326,7 +346,7 @@ pub struct Lookahead1<'a> {
 #[derive(Copy, Clone)]
 pub struct Cursor<'a> {
     parser: Parser<'a>,
-    cur: usize,
+    cur:    usize,
 }
 
 impl ParseBuffer<'_> {
@@ -352,7 +372,9 @@ impl ParseBuffer<'_> {
     }
 
     fn parser(&self) -> Parser<'_> {
-        Parser { buf: self }
+        Parser {
+            buf: self,
+        }
     }
 
     // Validates that all annotations properly parse in that they have balanced
@@ -363,7 +385,10 @@ impl ParseBuffer<'_> {
         enum State {
             None,
             LParen,
-            Annotation { depth: usize, span: Span },
+            Annotation {
+                depth: usize,
+                span:  Span,
+            },
         }
         let mut state = State::None;
         for token in self.tokens.iter() {
@@ -378,7 +403,9 @@ impl ParseBuffer<'_> {
                 (Reserved(s), State::LParen) if s.starts_with("@") && s.len() > 0 => {
                     let offset = self.input_pos(s);
                     State::Annotation {
-                        span: Span { offset },
+                        span:  Span {
+                            offset,
+                        },
                         depth: 1,
                     }
                 }
@@ -388,28 +415,53 @@ impl ParseBuffer<'_> {
 
                 // Once we're in an annotation we need to balance parentheses,
                 // so handle the depth changes.
-                (LParen(_), State::Annotation { span, depth }) => State::Annotation {
+                (
+                    LParen(_),
+                    State::Annotation {
+                        span,
+                        depth,
+                    },
+                ) => State::Annotation {
                     span,
                     depth: depth + 1,
                 },
-                (RParen(_), State::Annotation { depth: 1, .. }) => State::None,
-                (RParen(_), State::Annotation { span, depth }) => State::Annotation {
+                (
+                    RParen(_),
+                    State::Annotation {
+                        depth: 1,
+                        ..
+                    },
+                ) => State::None,
+                (
+                    RParen(_),
+                    State::Annotation {
+                        span,
+                        depth,
+                    },
+                ) => State::Annotation {
                     span,
                     depth: depth - 1,
                 },
                 // ... and otherwise all tokens are allowed in annotations.
-                (_, s @ State::Annotation { .. }) => s,
+                (
+                    _,
+                    s @ State::Annotation {
+                        ..
+                    },
+                ) => s,
             };
         }
-        if let State::Annotation { span, .. } = state {
+        if let State::Annotation {
+            span,
+            ..
+        } = state
+        {
             return Err(Error::new(span, format!("unclosed annotation")));
         }
         Ok(())
     }
 
-    fn input_pos(&self, src: &str) -> usize {
-        src.as_ptr() as usize - self.input.as_ptr() as usize
-    }
+    fn input_pos(&self, src: &str) -> usize { src.as_ptr() as usize - self.input.as_ptr() as usize }
 }
 
 impl<'a> Parser<'a> {
@@ -430,12 +482,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn has_meaningful_tokens(self) -> bool {
-        self.buf.tokens[self.cursor().cur..]
-            .iter()
-            .any(|(t, _)| match t {
-                Token::Whitespace(_) | Token::LineComment(_) | Token::BlockComment(_) => false,
-                _ => true,
-            })
+        self.buf.tokens[self.cursor().cur..].iter().any(|(t, _)| match t {
+            Token::Whitespace(_) | Token::LineComment(_) | Token::BlockComment(_) => false,
+            _ => true,
+        })
     }
 
     /// Parses a `T` from this [`Parser`].
@@ -469,7 +519,7 @@ impl<'a> Parser<'a> {
     /// # use wast::parser::*;
     /// struct TableType<'a> {
     ///     limits: Limits,
-    ///     elem: RefType<'a>,
+    ///     elem:   RefType<'a>,
     /// }
     ///
     /// impl<'a> Parse<'a> for TableType<'a> {
@@ -477,7 +527,7 @@ impl<'a> Parser<'a> {
     ///         // parse the `lim` then `et` in sequence
     ///         Ok(TableType {
     ///             limits: parser.parse()?,
-    ///             elem: parser.parse()?,
+    ///             elem:   parser.parse()?,
     ///         })
     ///     }
     /// }
@@ -486,9 +536,7 @@ impl<'a> Parser<'a> {
     /// [`Limits`]: crate::ast::Limits
     /// [`TableType`]: crate::ast::TableType
     /// [`RefType`]: crate::ast::RefType
-    pub fn parse<T: Parse<'a>>(self) -> Result<T> {
-        T::parse(self)
-    }
+    pub fn parse<T: Parse<'a>>(self) -> Result<T> { T::parse(self) }
 
     /// Performs a cheap test to see whether the current token in this stream is
     /// `T`.
@@ -536,16 +584,17 @@ impl<'a> Parser<'a> {
     ///             None
     ///         };
     ///
-    ///         Ok(Limits { min, max })
+    ///         Ok(Limits {
+    ///             min,
+    ///             max,
+    ///         })
     ///     }
     /// }
     /// ```
     ///
     /// [spec]: https://webassembly.github.io/spec/core/text/types.html#limits
     /// [`Limits`]: crate::ast::Limits
-    pub fn peek<T: Peek>(self) -> bool {
-        T::peek(self.cursor())
-    }
+    pub fn peek<T: Peek>(self) -> bool { T::peek(self.cursor()) }
 
     /// Same as the [`Parser::peek`] method, except checks the next token, not
     /// the current token.
@@ -610,7 +659,7 @@ impl<'a> Parser<'a> {
     pub fn lookahead1(self) -> Lookahead1<'a> {
         Lookahead1 {
             attempts: Vec::new(),
-            parser: self,
+            parser:   self,
         }
     }
 
@@ -653,7 +702,9 @@ impl<'a> Parser<'a> {
     ///         while !parser.is_empty() {
     ///             fields.push(parser.parens(|p| p.parse())?);
     ///         }
-    ///         Ok(Module { fields })
+    ///         Ok(Module {
+    ///             fields,
+    ///         })
     ///     }
     /// }
     /// ```
@@ -684,14 +735,12 @@ impl<'a> Parser<'a> {
     ///
     /// This is a low-level method that is only useful for implementing
     /// recursion limits in custom parsers.
-    pub fn parens_depth(&self) -> usize {
-        self.buf.depth.get()
-    }
+    pub fn parens_depth(&self) -> usize { self.buf.depth.get() }
 
     fn cursor(self) -> Cursor<'a> {
         Cursor {
             parser: self,
-            cur: self.buf.cur.get(),
+            cur:    self.buf.cur.get(),
         }
     }
 
@@ -703,8 +752,7 @@ impl<'a> Parser<'a> {
     /// [`Parser::parens`].
     pub fn step<F, T>(self, f: F) -> Result<T>
     where
-        F: FnOnce(Cursor<'a>) -> Result<(T, Cursor<'a>)>,
-    {
+        F: FnOnce(Cursor<'a>) -> Result<(T, Cursor<'a>)>, {
         let (result, cursor) = f(self.cursor())?;
         self.buf.cur.set(cursor.cur);
         Ok(result)
@@ -725,14 +773,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns the span of the current token
-    pub fn cur_span(&self) -> Span {
-        self.cursor().cur_span()
-    }
+    pub fn cur_span(&self) -> Span { self.cursor().cur_span() }
 
     /// Returns the span of the previous token
-    pub fn prev_span(&self) -> Span {
-        self.cursor().prev_span().unwrap_or(Span::from_offset(0))
-    }
+    pub fn prev_span(&self) -> Span { self.cursor().prev_span().unwrap_or(Span::from_offset(0)) }
 
     /// Registers a new known annotation with this parser to allow parsing
     /// annotations with this name.
@@ -804,7 +848,9 @@ impl<'a> Parser<'a> {
     ///
     ///         // ... and normally you'd otherwise parse module fields here ...
     ///
-    ///         Ok(Module { name })
+    ///         Ok(Module {
+    ///             name,
+    ///         })
     ///     }
     /// }
     /// ```
@@ -835,7 +881,9 @@ impl<'a> Parser<'a> {
     ///         while !parser.is_empty() {
     ///             fields.push(parser.parens(|p| p.parse())?);
     ///         }
-    ///         Ok(Module { fields })
+    ///         Ok(Module {
+    ///             fields,
+    ///         })
     ///     }
     /// }
     ///
@@ -864,8 +912,7 @@ impl<'a> Parser<'a> {
     /// [annotation]: https://github.com/WebAssembly/annotations
     pub fn register_annotation<'b>(self, annotation: &'b str) -> impl Drop + 'b
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let mut annotations = self.buf.known_annotations.borrow_mut();
         if !annotations.contains_key(annotation) {
             annotations.insert(annotation.to_string(), 0);
@@ -895,7 +942,9 @@ impl<'a> Cursor<'a> {
             Some(t) => self.parser.buf.input_pos(t.src()),
             None => self.parser.buf.input.len(),
         };
-        Span { offset }
+        Span {
+            offset,
+        }
     }
 
     /// Returns the span of the previous `Token` token.

@@ -33,10 +33,9 @@ where
         let fuel_global = self.globals.len() as u32;
         self.globals.push(GlobalType {
             val_type: ValType::I32,
-            mutable: true,
+            mutable:  true,
         });
-        self.defined_globals
-            .push((fuel_global, Instruction::I32Const(default_fuel as i32)));
+        self.defined_globals.push((fuel_global, Instruction::I32Const(default_fuel as i32)));
 
         for code in &mut self.code {
             let check_fuel = |insts: &mut Vec<Instruction>| {

@@ -14,11 +14,7 @@ fuzz_target!(|module: Module| {
         )
     });
     let wasm_bytes = wat::parse_str(&wat_string).unwrap_or_else(|e| {
-        fail(
-            &bytes,
-            &e,
-            "failed to assemble wat into Wasm with `wat::parse_str`",
-        )
+        fail(&bytes, &e, "failed to assemble wat into Wasm with `wat::parse_str`")
     });
     let wat_string2 = wasmprinter::print_bytes(&wasm_bytes).unwrap_or_else(|e| {
         fail(

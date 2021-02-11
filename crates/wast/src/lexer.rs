@@ -25,20 +25,16 @@
 //! [`Lexer`]: crate::lexer::Lexer
 
 use crate::{Error, Span};
-use std::borrow::Cow;
-use std::char;
-use std::fmt;
-use std::iter;
-use std::str;
+use std::{borrow::Cow, char, fmt, iter, str};
 
 /// A structure used to lex the s-expression syntax of WAT files.
 ///
-/// This structure is used to generate [`Source`] items, which should account for
-/// every single byte of the input as we iterate over it. A [`LexError`] is
+/// This structure is used to generate [`Source`] items, which should account
+/// for every single byte of the input as we iterate over it. A [`LexError`] is
 /// returned for any non-lexable text.
 #[derive(Clone)]
 pub struct Lexer<'a> {
-    it: iter::Peekable<str::CharIndices<'a>>,
+    it:    iter::Peekable<str::CharIndices<'a>>,
     input: &'a str,
 }
 
@@ -162,9 +158,9 @@ pub struct Integer<'a>(Box<IntegerInner<'a>>);
 #[derive(Debug, PartialEq)]
 struct IntegerInner<'a> {
     sign: Option<SignToken>,
-    src: &'a str,
-    val: Cow<'a, str>,
-    hex: bool,
+    src:  &'a str,
+    val:  Cow<'a, str>,
+    hex:  bool,
 }
 
 /// A parsed float.
@@ -229,9 +225,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the original source input that we're lexing.
-    pub fn input(&self) -> &'a str {
-        self.input
-    }
+    pub fn input(&self) -> &'a str { self.input }
 
     /// Lexes the next token in the input.
     ///
@@ -320,7 +314,9 @@ impl<'a> Lexer<'a> {
         if num == "inf" {
             return Some(Token::Float(Float(Box::new(FloatInner {
                 src,
-                val: FloatVal::Inf { negative },
+                val: FloatVal::Inf {
+                    negative,
+                },
             }))));
         } else if num == "nan" {
             return Some(Token::Float(Float(Box::new(FloatInner {
@@ -348,17 +344,9 @@ impl<'a> Lexer<'a> {
 
         // Figure out if we're a hex number or not
         let (mut it, hex, test_valid) = if num.starts_with("0x") {
-            (
-                num[2..].chars(),
-                true,
-                char::is_ascii_hexdigit as fn(&char) -> bool,
-            )
+            (num[2..].chars(), true, char::is_ascii_hexdigit as fn(&char) -> bool)
         } else {
-            (
-                num.chars(),
-                false,
-                char::is_ascii_digit as fn(&char) -> bool,
-            )
+            (num.chars(), false, char::is_ascii_digit as fn(&char) -> bool)
         };
 
         // Evaluate the first part, moving out all underscores
@@ -664,9 +652,7 @@ impl<'a> Lexer<'a> {
     /// Reads the next character from the input string and where it's located,
     /// returning an error if the input stream is empty.
     fn must_char(&mut self) -> Result<(usize, char), Error> {
-        self.it
-            .next()
-            .ok_or_else(|| self.error(self.input.len(), LexError::UnexpectedEof))
+        self.it.next().ok_or_else(|| self.error(self.input.len(), LexError::UnexpectedEof))
     }
 
     /// Expects that a specific character must be read next
@@ -675,32 +661,35 @@ impl<'a> Lexer<'a> {
         if wanted == found {
             Ok(pos)
         } else {
-            Err(self.error(pos, LexError::Expected { wanted, found }))
+            Err(self.error(pos, LexError::Expected {
+                wanted,
+                found,
+            }))
         }
     }
 
     /// Returns the current position of our iterator through the input string
-    fn cur(&mut self) -> usize {
-        self.it.peek().map(|p| p.0).unwrap_or(self.input.len())
-    }
+    fn cur(&mut self) -> usize { self.it.peek().map(|p| p.0).unwrap_or(self.input.len()) }
 
     /// Returns the remaining string that we have left to parse
-    fn cur_str(&mut self) -> &'a str {
-        &self.input[self.cur()..]
-    }
+    fn cur_str(&mut self) -> &'a str { &self.input[self.cur()..] }
 
     /// Creates an error at `pos` with the specified `kind`
     fn error(&self, pos: usize, kind: LexError) -> Error {
-        Error::lex(Span { offset: pos }, self.input, kind)
+        Error::lex(
+            Span {
+                offset: pos,
+            },
+            self.input,
+            kind,
+        )
     }
 }
 
 impl<'a> Iterator for Lexer<'a> {
     type Item = Result<Token<'a>, Error>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.parse().transpose()
-    }
+    fn next(&mut self) -> Option<Self::Item> { self.parse().transpose() }
 }
 
 impl<'a> Token<'a> {
@@ -724,45 +713,40 @@ impl<'a> Token<'a> {
 
 impl<'a> Integer<'a> {
     /// Returns the sign token for this integer.
-    pub fn sign(&self) -> Option<SignToken> {
-        self.0.sign
-    }
+    pub fn sign(&self) -> Option<SignToken> { self.0.sign }
 
     /// Returns the original source text for this integer.
-    pub fn src(&self) -> &'a str {
-        self.0.src
-    }
+    pub fn src(&self) -> &'a str { self.0.src }
 
     /// Returns the value string that can be parsed for this integer, as well as
     /// the base that it should be parsed in
     pub fn val(&self) -> (&str, u32) {
-        (&self.0.val, if self.0.hex { 16 } else { 10 })
+        (
+            &self.0.val,
+            if self.0.hex {
+                16
+            } else {
+                10
+            },
+        )
     }
 }
 
 impl<'a> Float<'a> {
     /// Returns the original source text for this integer.
-    pub fn src(&self) -> &'a str {
-        self.0.src
-    }
+    pub fn src(&self) -> &'a str { self.0.src }
 
     /// Returns a parsed value of this float with all of the components still
     /// listed as strings.
-    pub fn val(&self) -> &FloatVal<'a> {
-        &self.0.val
-    }
+    pub fn val(&self) -> &FloatVal<'a> { &self.0.val }
 }
 
 impl<'a> WasmString<'a> {
     /// Returns the original source text for this string.
-    pub fn src(&self) -> &'a str {
-        self.0.src
-    }
+    pub fn src(&self) -> &'a str { self.0.src }
 
     /// Returns a parsed value, as a list of bytes, for this string.
-    pub fn val(&self) -> &[u8] {
-        &self.0.val
-    }
+    pub fn val(&self) -> &[u8] { &self.0.val }
 }
 
 fn to_hex(c: char) -> u8 {
@@ -822,7 +806,10 @@ impl fmt::Display for LexError {
             InvalidStringEscape(c) => write!(f, "invalid string escape {:?}", c)?,
             InvalidHexDigit(c) => write!(f, "invalid hex digit {:?}", c)?,
             InvalidDigit(c) => write!(f, "invalid decimal digit {:?}", c)?,
-            Expected { wanted, found } => write!(f, "expected {:?} but found {:?}", wanted, found)?,
+            Expected {
+                wanted,
+                found,
+            } => write!(f, "expected {:?} but found {:?}", wanted, found)?,
             UnexpectedEof => write!(f, "unexpected end-of-file")?,
             NumberTooBig => f.write_str("number is too big to parse")?,
             InvalidUnicodeValue(c) => write!(f, "invalid unicode scalar value 0x{:x}", c)?,
@@ -881,10 +868,7 @@ mod tests {
     }
 
     fn get_token(input: &str) -> Token<'_> {
-        Lexer::new(input)
-            .parse()
-            .expect("no first token")
-            .expect("no token")
+        Lexer::new(input).parse().expect("no first token").expect("no token")
     }
 
     #[test]
@@ -919,14 +903,8 @@ mod tests {
         assert_eq!(&*get_string("\"\\\\\""), b"\\");
         assert_eq!(&*get_string("\"\\01\""), &[1]);
         assert_eq!(&*get_string("\"\\u{1}\""), &[1]);
-        assert_eq!(
-            &*get_string("\"\\u{0f3}\""),
-            '\u{0f3}'.encode_utf8(&mut [0; 4]).as_bytes()
-        );
-        assert_eq!(
-            &*get_string("\"\\u{0_f_3}\""),
-            '\u{0f3}'.encode_utf8(&mut [0; 4]).as_bytes()
-        );
+        assert_eq!(&*get_string("\"\\u{0f3}\""), '\u{0f3}'.encode_utf8(&mut [0; 4]).as_bytes());
+        assert_eq!(&*get_string("\"\\u{0_f_3}\""), '\u{0f3}'.encode_utf8(&mut [0; 4]).as_bytes());
 
         for i in 0..=255i32 {
             let s = format!("\"\\{:02x}\"", i);
@@ -1010,116 +988,83 @@ mod tests {
                 other => panic!("not reserved {:?}", other),
             }
         }
-        assert_eq!(
-            get_float("nan"),
-            FloatVal::Nan {
-                val: None,
-                negative: false
-            },
-        );
-        assert_eq!(
-            get_float("-nan"),
-            FloatVal::Nan {
-                val: None,
-                negative: true,
-            },
-        );
-        assert_eq!(
-            get_float("+nan"),
-            FloatVal::Nan {
-                val: None,
-                negative: false,
-            },
-        );
-        assert_eq!(
-            get_float("+nan:0x1"),
-            FloatVal::Nan {
-                val: Some(1),
-                negative: false,
-            },
-        );
-        assert_eq!(
-            get_float("nan:0x7f_ffff"),
-            FloatVal::Nan {
-                val: Some(0x7fffff),
-                negative: false,
-            },
-        );
-        assert_eq!(get_float("inf"), FloatVal::Inf { negative: false });
-        assert_eq!(get_float("-inf"), FloatVal::Inf { negative: true });
-        assert_eq!(get_float("+inf"), FloatVal::Inf { negative: false });
+        assert_eq!(get_float("nan"), FloatVal::Nan {
+            val:      None,
+            negative: false,
+        },);
+        assert_eq!(get_float("-nan"), FloatVal::Nan {
+            val:      None,
+            negative: true,
+        },);
+        assert_eq!(get_float("+nan"), FloatVal::Nan {
+            val:      None,
+            negative: false,
+        },);
+        assert_eq!(get_float("+nan:0x1"), FloatVal::Nan {
+            val:      Some(1),
+            negative: false,
+        },);
+        assert_eq!(get_float("nan:0x7f_ffff"), FloatVal::Nan {
+            val:      Some(0x7fffff),
+            negative: false,
+        },);
+        assert_eq!(get_float("inf"), FloatVal::Inf {
+            negative: false,
+        });
+        assert_eq!(get_float("-inf"), FloatVal::Inf {
+            negative: true,
+        });
+        assert_eq!(get_float("+inf"), FloatVal::Inf {
+            negative: false,
+        });
 
-        assert_eq!(
-            get_float("1.2"),
-            FloatVal::Val {
-                integral: "1".into(),
-                decimal: Some("2".into()),
-                exponent: None,
-                hex: false,
-            },
-        );
-        assert_eq!(
-            get_float("1.2e3"),
-            FloatVal::Val {
-                integral: "1".into(),
-                decimal: Some("2".into()),
-                exponent: Some("3".into()),
-                hex: false,
-            },
-        );
-        assert_eq!(
-            get_float("-1_2.1_1E+0_1"),
-            FloatVal::Val {
-                integral: "-12".into(),
-                decimal: Some("11".into()),
-                exponent: Some("01".into()),
-                hex: false,
-            },
-        );
-        assert_eq!(
-            get_float("+1_2.1_1E-0_1"),
-            FloatVal::Val {
-                integral: "12".into(),
-                decimal: Some("11".into()),
-                exponent: Some("-01".into()),
-                hex: false,
-            },
-        );
-        assert_eq!(
-            get_float("0x1_2.3_4p5_6"),
-            FloatVal::Val {
-                integral: "12".into(),
-                decimal: Some("34".into()),
-                exponent: Some("56".into()),
-                hex: true,
-            },
-        );
-        assert_eq!(
-            get_float("+0x1_2.3_4P-5_6"),
-            FloatVal::Val {
-                integral: "12".into(),
-                decimal: Some("34".into()),
-                exponent: Some("-56".into()),
-                hex: true,
-            },
-        );
-        assert_eq!(
-            get_float("1."),
-            FloatVal::Val {
-                integral: "1".into(),
-                decimal: None,
-                exponent: None,
-                hex: false,
-            },
-        );
-        assert_eq!(
-            get_float("0x1p-24"),
-            FloatVal::Val {
-                integral: "1".into(),
-                decimal: None,
-                exponent: Some("-24".into()),
-                hex: true,
-            },
-        );
+        assert_eq!(get_float("1.2"), FloatVal::Val {
+            integral: "1".into(),
+            decimal:  Some("2".into()),
+            exponent: None,
+            hex:      false,
+        },);
+        assert_eq!(get_float("1.2e3"), FloatVal::Val {
+            integral: "1".into(),
+            decimal:  Some("2".into()),
+            exponent: Some("3".into()),
+            hex:      false,
+        },);
+        assert_eq!(get_float("-1_2.1_1E+0_1"), FloatVal::Val {
+            integral: "-12".into(),
+            decimal:  Some("11".into()),
+            exponent: Some("01".into()),
+            hex:      false,
+        },);
+        assert_eq!(get_float("+1_2.1_1E-0_1"), FloatVal::Val {
+            integral: "12".into(),
+            decimal:  Some("11".into()),
+            exponent: Some("-01".into()),
+            hex:      false,
+        },);
+        assert_eq!(get_float("0x1_2.3_4p5_6"), FloatVal::Val {
+            integral: "12".into(),
+            decimal:  Some("34".into()),
+            exponent: Some("56".into()),
+            hex:      true,
+        },);
+        assert_eq!(get_float("+0x1_2.3_4P-5_6"), FloatVal::Val {
+            integral: "12".into(),
+            decimal:  Some("34".into()),
+            exponent: Some("-56".into()),
+            hex:      true,
+        },);
+        assert_eq!(get_float("1."), FloatVal::Val {
+            integral: "1".into(),
+            decimal:  None,
+            exponent: None,
+            hex:      false,
+        },);
+        assert_eq!(get_float("0x1p-24"), FloatVal::Val {
+            integral: "1".into(),
+            decimal:  None,
+            exponent: Some("-24".into()),
+            hex:      true,
+        },);
     }
 }

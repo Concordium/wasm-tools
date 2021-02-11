@@ -40,22 +40,20 @@ pub trait WasmFuncType {
     /// Returns the list of inputs as an iterator.
     fn inputs(&self) -> WasmFuncTypeInputs<'_, Self>
     where
-        Self: Sized,
-    {
+        Self: Sized, {
         WasmFuncTypeInputs {
             func_type: self,
-            range: 0..self.len_inputs() as u32,
+            range:     0..self.len_inputs() as u32,
         }
     }
 
     /// Returns the list of outputs as an iterator.
     fn outputs(&self) -> WasmFuncTypeOutputs<'_, Self>
     where
-        Self: Sized,
-    {
+        Self: Sized, {
         WasmFuncTypeOutputs {
             func_type: self,
-            range: 0..self.len_outputs() as u32,
+            range:     0..self.len_outputs() as u32,
         }
     }
 }
@@ -64,18 +62,13 @@ impl<T> WasmFuncType for &'_ T
 where
     T: ?Sized + WasmFuncType,
 {
-    fn len_inputs(&self) -> usize {
-        T::len_inputs(self)
-    }
-    fn len_outputs(&self) -> usize {
-        T::len_outputs(self)
-    }
-    fn input_at(&self, at: u32) -> Option<Type> {
-        T::input_at(self, at)
-    }
-    fn output_at(&self, at: u32) -> Option<Type> {
-        T::output_at(self, at)
-    }
+    fn len_inputs(&self) -> usize { T::len_inputs(self) }
+
+    fn len_outputs(&self) -> usize { T::len_outputs(self) }
+
+    fn input_at(&self, at: u32) -> Option<Type> { T::input_at(self, at) }
+
+    fn output_at(&self, at: u32) -> Option<Type> { T::output_at(self, at) }
 }
 
 /// Iterator over the inputs of a Wasm function type.
@@ -93,14 +86,10 @@ where
     type Item = crate::Type;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range
-            .next()
-            .map(|i| self.func_type.input_at(i).unwrap())
+        self.range.next().map(|i| self.func_type.input_at(i).unwrap())
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.range.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
 
 impl<T> DoubleEndedIterator for WasmFuncTypeInputs<'_, T>
@@ -108,9 +97,7 @@ where
     T: WasmFuncType,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.range
-            .next_back()
-            .map(|i| self.func_type.input_at(i).unwrap())
+        self.range.next_back().map(|i| self.func_type.input_at(i).unwrap())
     }
 }
 
@@ -118,16 +105,14 @@ impl<T> ExactSizeIterator for WasmFuncTypeInputs<'_, T>
 where
     T: WasmFuncType,
 {
-    fn len(&self) -> usize {
-        self.range.len()
-    }
+    fn len(&self) -> usize { self.range.len() }
 }
 
 impl<'a, T> Clone for WasmFuncTypeInputs<'a, T> {
     fn clone(&self) -> WasmFuncTypeInputs<'a, T> {
         WasmFuncTypeInputs {
             func_type: self.func_type,
-            range: self.range.clone(),
+            range:     self.range.clone(),
         }
     }
 }
@@ -147,14 +132,10 @@ where
     type Item = crate::Type;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range
-            .next()
-            .map(|i| self.func_type.output_at(i).unwrap())
+        self.range.next().map(|i| self.func_type.output_at(i).unwrap())
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.range.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
 
 impl<T> DoubleEndedIterator for WasmFuncTypeOutputs<'_, T>
@@ -162,9 +143,7 @@ where
     T: WasmFuncType,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.range
-            .next_back()
-            .map(|i| self.func_type.output_at(i).unwrap())
+        self.range.next_back().map(|i| self.func_type.output_at(i).unwrap())
     }
 }
 
@@ -172,16 +151,14 @@ impl<T> ExactSizeIterator for WasmFuncTypeOutputs<'_, T>
 where
     T: WasmFuncType,
 {
-    fn len(&self) -> usize {
-        self.range.len()
-    }
+    fn len(&self) -> usize { self.range.len() }
 }
 
 impl<'a, T> Clone for WasmFuncTypeOutputs<'a, T> {
     fn clone(&self) -> WasmFuncTypeOutputs<'a, T> {
         WasmFuncTypeOutputs {
             func_type: self.func_type,
-            range: self.range.clone(),
+            range:     self.range.clone(),
         }
     }
 }
@@ -228,53 +205,35 @@ where
 {
     type FuncType = T::FuncType;
 
-    fn table_at(&self, at: u32) -> Option<TableType> {
-        T::table_at(self, at)
-    }
-    fn memory_at(&self, at: u32) -> Option<MemoryType> {
-        T::memory_at(self, at)
-    }
-    fn event_at(&self, at: u32) -> Option<&Self::FuncType> {
-        T::event_at(self, at)
-    }
-    fn global_at(&self, at: u32) -> Option<GlobalType> {
-        T::global_at(self, at)
-    }
-    fn func_type_at(&self, at: u32) -> Option<&Self::FuncType> {
-        T::func_type_at(self, at)
-    }
+    fn table_at(&self, at: u32) -> Option<TableType> { T::table_at(self, at) }
+
+    fn memory_at(&self, at: u32) -> Option<MemoryType> { T::memory_at(self, at) }
+
+    fn event_at(&self, at: u32) -> Option<&Self::FuncType> { T::event_at(self, at) }
+
+    fn global_at(&self, at: u32) -> Option<GlobalType> { T::global_at(self, at) }
+
+    fn func_type_at(&self, at: u32) -> Option<&Self::FuncType> { T::func_type_at(self, at) }
+
     fn type_of_function(&self, func_idx: u32) -> Option<&Self::FuncType> {
         T::type_of_function(self, func_idx)
     }
-    fn element_type_at(&self, at: u32) -> Option<Type> {
-        T::element_type_at(self, at)
-    }
 
-    fn element_count(&self) -> u32 {
-        T::element_count(self)
-    }
-    fn data_count(&self) -> u32 {
-        T::data_count(self)
-    }
-    fn is_function_referenced(&self, idx: u32) -> bool {
-        T::is_function_referenced(self, idx)
-    }
+    fn element_type_at(&self, at: u32) -> Option<Type> { T::element_type_at(self, at) }
+
+    fn element_count(&self) -> u32 { T::element_count(self) }
+
+    fn data_count(&self) -> u32 { T::data_count(self) }
+
+    fn is_function_referenced(&self, idx: u32) -> bool { T::is_function_referenced(self, idx) }
 }
 
 impl WasmFuncType for FuncType {
-    fn len_inputs(&self) -> usize {
-        self.params.len()
-    }
+    fn len_inputs(&self) -> usize { self.params.len() }
 
-    fn len_outputs(&self) -> usize {
-        self.returns.len()
-    }
+    fn len_outputs(&self) -> usize { self.returns.len() }
 
-    fn input_at(&self, at: u32) -> Option<Type> {
-        self.params.get(at as usize).copied()
-    }
+    fn input_at(&self, at: u32) -> Option<Type> { self.params.get(at as usize).copied() }
 
-    fn output_at(&self, at: u32) -> Option<Type> {
-        self.returns.get(at as usize).copied()
-    }
+    fn output_at(&self, at: u32) -> Option<Type> { self.returns.get(at as usize).copied() }
 }

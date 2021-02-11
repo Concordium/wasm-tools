@@ -6,8 +6,7 @@ use super::*;
 ///
 /// ```
 /// use wasm_encoder::{
-///     CodeSection, Function, FunctionSection, Instruction, Module,
-///     TypeSection, ValType
+///     CodeSection, Function, FunctionSection, Instruction, Module, TypeSection, ValType,
 /// };
 ///
 /// let mut types = TypeSection::new();
@@ -24,15 +23,12 @@ use super::*;
 /// code.function(&func);
 ///
 /// let mut module = Module::new();
-/// module
-///     .section(&types)
-///     .section(&functions)
-///     .section(&code);
+/// module.section(&types).section(&functions).section(&code);
 ///
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct CodeSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -40,7 +36,7 @@ impl CodeSection {
     /// Create a new code section encoder.
     pub fn new() -> CodeSection {
         CodeSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -54,14 +50,11 @@ impl CodeSection {
 }
 
 impl Section for CodeSection {
-    fn id(&self) -> u8 {
-        SectionId::Code.into()
-    }
+    fn id(&self) -> u8 { SectionId::Code.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(
@@ -104,8 +97,7 @@ impl Function {
     pub fn new<L>(locals: L) -> Self
     where
         L: IntoIterator<Item = (u32, ValType)>,
-        L::IntoIter: ExactSizeIterator,
-    {
+        L::IntoIter: ExactSizeIterator, {
         let locals = locals.into_iter();
         let mut bytes = vec![];
         bytes.extend(encoders::u32(u32::try_from(locals.len()).unwrap()));
@@ -113,7 +105,9 @@ impl Function {
             bytes.extend(encoders::u32(count));
             bytes.push(ty.into());
         }
-        Function { bytes }
+        Function {
+            bytes,
+        }
     }
 
     /// Write an instruction into this function body.
@@ -125,8 +119,7 @@ impl Function {
     /// Add raw bytes to this function's body.
     pub fn raw<B>(&mut self, bytes: B) -> &mut Self
     where
-        B: IntoIterator<Item = u8>,
-    {
+        B: IntoIterator<Item = u8>, {
         self.bytes.extend(bytes);
         self
     }
@@ -203,7 +196,10 @@ pub enum Instruction<'a> {
     BrTable(&'a [u32], u32),
     Return,
     Call(u32),
-    CallIndirect { ty: u32, table: u32 },
+    CallIndirect {
+        ty:    u32,
+        table: u32,
+    },
 
     // Parametric instructions.
     Drop,
@@ -242,9 +238,15 @@ pub enum Instruction<'a> {
     I64Store32(MemArg),
     MemorySize(u32),
     MemoryGrow(u32),
-    MemoryInit { mem: u32, data: u32 },
+    MemoryInit {
+        mem:  u32,
+        data: u32,
+    },
     DataDrop(u32),
-    MemoryCopy { src: u32, dst: u32 },
+    MemoryCopy {
+        src: u32,
+        dst: u32,
+    },
     MemoryFill(u32),
 
     // Numeric instructions.
@@ -399,14 +401,32 @@ pub enum Instruction<'a> {
     RefFunc(u32),
 
     // Bulk memory instructions.
-    TableInit { segment: u32, table: u32 },
-    ElemDrop { segment: u32 },
-    TableFill { table: u32 },
-    TableSet { table: u32 },
-    TableGet { table: u32 },
-    TableGrow { table: u32 },
-    TableSize { table: u32 },
-    TableCopy { src: u32, dst: u32 },
+    TableInit {
+        segment: u32,
+        table:   u32,
+    },
+    ElemDrop {
+        segment: u32,
+    },
+    TableFill {
+        table: u32,
+    },
+    TableSet {
+        table: u32,
+    },
+    TableGet {
+        table: u32,
+    },
+    TableGrow {
+        table: u32,
+    },
+    TableSize {
+        table: u32,
+    },
+    TableCopy {
+        src: u32,
+        dst: u32,
+    },
 }
 
 impl Instruction<'_> {
@@ -450,7 +470,10 @@ impl Instruction<'_> {
                 bytes.push(0x10);
                 bytes.extend(encoders::u32(f));
             }
-            Instruction::CallIndirect { ty, table } => {
+            Instruction::CallIndirect {
+                ty,
+                table,
+            } => {
                 bytes.push(0x11);
                 bytes.extend(encoders::u32(ty));
                 bytes.extend(encoders::u32(table));
@@ -486,11 +509,15 @@ impl Instruction<'_> {
                 bytes.push(0x24);
                 bytes.extend(encoders::u32(g));
             }
-            Instruction::TableGet { table } => {
+            Instruction::TableGet {
+                table,
+            } => {
                 bytes.push(0x25);
                 bytes.extend(encoders::u32(table));
             }
-            Instruction::TableSet { table } => {
+            Instruction::TableSet {
+                table,
+            } => {
                 bytes.push(0x26);
                 bytes.extend(encoders::u32(table));
             }
@@ -596,7 +623,10 @@ impl Instruction<'_> {
                 bytes.push(0x40);
                 bytes.extend(encoders::u32(i));
             }
-            Instruction::MemoryInit { mem, data } => {
+            Instruction::MemoryInit {
+                mem,
+                data,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(8));
                 bytes.extend(encoders::u32(data));
@@ -607,7 +637,10 @@ impl Instruction<'_> {
                 bytes.extend(encoders::u32(9));
                 bytes.extend(encoders::u32(data));
             }
-            Instruction::MemoryCopy { src, dst } => {
+            Instruction::MemoryCopy {
+                src,
+                dst,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(10));
                 bytes.extend(encoders::u32(dst));
@@ -812,34 +845,48 @@ impl Instruction<'_> {
             }
 
             // Bulk memory instructions.
-            Instruction::TableInit { segment, table } => {
+            Instruction::TableInit {
+                segment,
+                table,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x0c));
                 bytes.extend(encoders::u32(segment));
                 bytes.extend(encoders::u32(table));
             }
-            Instruction::ElemDrop { segment } => {
+            Instruction::ElemDrop {
+                segment,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x0d));
                 bytes.extend(encoders::u32(segment));
             }
-            Instruction::TableCopy { src, dst } => {
+            Instruction::TableCopy {
+                src,
+                dst,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x0e));
                 bytes.extend(encoders::u32(dst));
                 bytes.extend(encoders::u32(src));
             }
-            Instruction::TableGrow { table } => {
+            Instruction::TableGrow {
+                table,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x0f));
                 bytes.extend(encoders::u32(table));
             }
-            Instruction::TableSize { table } => {
+            Instruction::TableSize {
+                table,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x10));
                 bytes.extend(encoders::u32(table));
             }
-            Instruction::TableFill { table } => {
+            Instruction::TableFill {
+                table,
+            } => {
                 bytes.push(0xfc);
                 bytes.extend(encoders::u32(0x11));
                 bytes.extend(encoders::u32(table));

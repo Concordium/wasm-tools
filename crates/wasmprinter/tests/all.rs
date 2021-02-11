@@ -66,11 +66,7 @@ fn locals_overflow() {
     )
     .unwrap();
     let err = wasmprinter::print_bytes(&bytes).unwrap_err();
-    assert!(
-        err.to_string().contains("maximum number of locals"),
-        "{:?}",
-        err
-    );
+    assert!(err.to_string().contains("maximum number of locals"), "{:?}", err);
 }
 
 #[test]
@@ -94,11 +90,7 @@ fn memarg_too_big() {
     )
     .unwrap();
     let err = wasmprinter::print_bytes(&bytes).unwrap_err();
-    assert!(
-        err.to_string().contains("alignment in memarg too large"),
-        "{:?}",
-        err
-    );
+    assert!(err.to_string().contains("alignment in memarg too large"), "{:?}", err);
 }
 
 #[test]

@@ -9,19 +9,19 @@
 #![deny(missing_docs)]
 
 use anyhow::{bail, Context, Result};
-use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
-use std::mem;
-use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+    mem,
+    path::Path,
+};
 use wasmparser::*;
 
 const MAX_LOCALS: u32 = 50000;
 
 /// Reads a WebAssembly `file` from the filesystem and then prints it into an
 /// in-memory `String`.
-pub fn print_file(file: impl AsRef<Path>) -> Result<String> {
-    _parse_file(file.as_ref())
-}
+pub fn print_file(file: impl AsRef<Path>) -> Result<String> { _parse_file(file.as_ref()) }
 
 fn _parse_file(file: &Path) -> Result<String> {
     let contents = std::fs::read(file).context(format!("failed to read `{}`", file.display()))?;
@@ -30,9 +30,7 @@ fn _parse_file(file: &Path) -> Result<String> {
 
 /// Prints an in-memory `wasm` binary blob into an in-memory `String` which is
 /// its textual representation.
-pub fn print_bytes(wasm: impl AsRef<[u8]>) -> Result<String> {
-    Printer::new().print(wasm.as_ref())
-}
+pub fn print_bytes(wasm: impl AsRef<[u8]>) -> Result<String> { Printer::new().print(wasm.as_ref()) }
 
 /// Context used for printing a WebAssembly binary.
 ///
@@ -41,38 +39,36 @@ pub fn print_bytes(wasm: impl AsRef<[u8]>) -> Result<String> {
 #[derive(Default)]
 pub struct Printer {
     printers: HashMap<String, Box<dyn FnMut(&mut Printer, usize, &[u8]) -> Result<()>>>,
-    result: String,
-    state: ModuleState,
-    nesting: u32,
+    result:   String,
+    state:    ModuleState,
+    nesting:  u32,
 }
 
 #[derive(Default)]
 struct ModuleState {
-    func: u32,
-    module: u32,
-    instance: u32,
-    memory: u32,
-    event: u32,
-    global: u32,
-    table: u32,
-    types: Vec<Option<FuncType>>,
-    names: HashMap<u32, Naming>,
-    local_names: HashMap<u32, HashMap<u32, Naming>>,
-    module_name: Option<Naming>,
+    func:                    u32,
+    module:                  u32,
+    instance:                u32,
+    memory:                  u32,
+    event:                   u32,
+    global:                  u32,
+    table:                   u32,
+    types:                   Vec<Option<FuncType>>,
+    names:                   HashMap<u32, Naming>,
+    local_names:             HashMap<u32, HashMap<u32, Naming>>,
+    module_name:             Option<Naming>,
     implicit_instances_seen: HashSet<String>,
 }
 
 struct Naming {
     identifier: Option<String>,
-    name: String,
+    name:       String,
 }
 
 impl Printer {
     /// Creates a new `Printer` object that's ready to start printing wasm
     /// binaries to strings.
-    pub fn new() -> Printer {
-        Printer::default()
-    }
+    pub fn new() -> Printer { Printer::default() }
 
     /// Registers a custom `printer` function to get invoked whenever a custom
     /// section of name `section` is seen.
@@ -98,9 +94,7 @@ impl Printer {
     }
 
     /// Gets the output result of this `Printer`, or where all output is going.
-    pub fn result_mut(&mut self) -> &mut String {
-        &mut self.result
-    }
+    pub fn result_mut(&mut self) -> &mut String { &mut self.result }
 
     /// Prints a WebAssembly binary into a `String`
     ///
@@ -129,14 +123,20 @@ impl Printer {
         loop {
             let payload = match pre_parser.parse(bytes, true)? {
                 Chunk::NeedMoreData(_) => unreachable!(),
-                Chunk::Parsed { payload, consumed } => {
+                Chunk::Parsed {
+                    payload,
+                    consumed,
+                } => {
                     bytes = &bytes[consumed..];
                     payload
                 }
             };
             match payload {
                 Payload::CodeSectionEntry(f) => code.push(f),
-                Payload::ModuleSectionStart { size, .. } => {
+                Payload::ModuleSectionStart {
+                    size,
+                    ..
+                } => {
                     pre_parser.skip_section();
                     bytes = &bytes[size as usize..];
                 }
@@ -162,7 +162,10 @@ impl Printer {
         loop {
             let payload = match parser.parse(*wasm, true)? {
                 Chunk::NeedMoreData(_) => unreachable!(),
-                Chunk::Parsed { payload, consumed } => {
+                Chunk::Parsed {
+                    payload,
+                    consumed,
+                } => {
                     *wasm = &wasm[consumed..];
                     payload
                 }
@@ -192,7 +195,10 @@ impl Printer {
                 Payload::EventSection(s) => self.print_events(s)?,
                 Payload::GlobalSection(s) => self.print_globals(s)?,
                 Payload::ExportSection(s) => self.print_exports(s)?,
-                Payload::StartSection { func, .. } => {
+                Payload::StartSection {
+                    func,
+                    ..
+                } => {
                     self.newline();
                     self.start_group("start ");
                     self.print_func_idx(func)?;
@@ -202,20 +208,26 @@ impl Printer {
 
                 // printed with the `Function` or `Module` section, so we
                 // skip this section
-                Payload::CodeSectionStart { size, .. } => {
+                Payload::CodeSectionStart {
+                    size,
+                    ..
+                } => {
                     *wasm = &wasm[size as usize..];
                     parser.skip_section();
                 }
-                Payload::CodeSectionEntry(_) => {
-                    unreachable!()
-                }
+                Payload::CodeSectionEntry(_) => unreachable!(),
 
                 Payload::DataSection(s) => self.print_data(s)?,
                 Payload::AliasSection(s) => self.print_aliases(s)?,
                 Payload::InstanceSection(s) => self.print_instances(s)?,
 
-                Payload::ModuleSectionStart { .. } => {}
-                Payload::ModuleSectionEntry { parser, .. } => {
+                Payload::ModuleSectionStart {
+                    ..
+                } => {}
+                Payload::ModuleSectionEntry {
+                    parser,
+                    ..
+                } => {
                     self.newline();
                     self.start_group("module");
                     self.print_contents(parser, wasm, &format!(" (;{};)", self.state.module))?;
@@ -224,11 +236,19 @@ impl Printer {
                 }
 
                 // not part of the text format
-                Payload::Version { .. } | Payload::DataCountSection { .. } => {}
+                Payload::Version {
+                    ..
+                }
+                | Payload::DataCountSection {
+                    ..
+                } => {}
 
                 Payload::End => break,
 
-                Payload::UnknownSection { id, .. } => bail!("found unknown section `{}`", id),
+                Payload::UnknownSection {
+                    id,
+                    ..
+                } => bail!("found unknown section `{}`", id),
             }
         }
         self.state = prev;
@@ -258,9 +278,7 @@ impl Printer {
                     let mut map = n.get_map()?;
                     for _ in 0..map.get_count() {
                         let name = map.read()?;
-                        self.state
-                            .names
-                            .insert(name.index, Naming::new(name.name, &mut names));
+                        self.state.names.insert(name.index, Naming::new(name.name, &mut names));
                     }
                 }
                 Name::Local(n) => {
@@ -274,9 +292,7 @@ impl Printer {
                             let name = map.read()?;
                             local_map.insert(name.index, Naming::new(name.name, &mut names));
                         }
-                        self.state
-                            .local_names
-                            .insert(local_name.func_index, local_map);
+                        self.state.local_names.insert(local_name.func_index, local_map);
                     }
                 }
             }
@@ -363,9 +379,7 @@ impl Printer {
         // a new one if that's the case with a named parameter.
         for (i, param) in ty.params.iter().enumerate() {
             let local_names = &self.state.local_names;
-            let name = names_for
-                .and_then(|n| local_names.get(&n))
-                .and_then(|n| n.get(&(i as u32)));
+            let name = names_for.and_then(|n| local_names.get(&n)).and_then(|n| n.get(&(i as u32)));
             params.start_local(name, &mut self.result);
             self.print_valtype(*param)?;
             params.end_local(&mut self.result);
@@ -415,11 +429,7 @@ impl Printer {
             // see the module-name of a two-level import that translates to an
             // implicit instance we need to account for in our numbering.
             if import.field.is_some() {
-                if self
-                    .state
-                    .implicit_instances_seen
-                    .insert(import.module.to_string())
-                {
+                if self.state.implicit_instances_seen.insert(import.module.to_string()) {
                     self.state.instance += 1;
                 }
             }
@@ -505,13 +515,19 @@ impl Printer {
             write!(self.result, "(;{};) ", self.state.memory)?;
         }
         match ty {
-            MemoryType::M32 { limits, shared } => {
+            MemoryType::M32 {
+                limits,
+                shared,
+            } => {
                 self.print_limits(limits)?;
                 if *shared {
                     self.result.push_str(" shared");
                 }
             }
-            MemoryType::M64 { limits, shared } => {
+            MemoryType::M64 {
+                limits,
+                shared,
+            } => {
                 write!(self.result, "i64 {}", limits.initial)?;
                 if let Some(max) = limits.maximum {
                     write!(self.result, " {}", max)?;
@@ -615,20 +631,14 @@ impl Printer {
                 Some(name) => name.write(&mut self.result),
                 None => write!(self.result, "(;{};)", self.state.func)?,
             }
-            let params = self
-                .print_functype_idx(ty, true, Some(self.state.func))?
-                .unwrap_or(0);
+            let params = self.print_functype_idx(ty, true, Some(self.state.func))?.unwrap_or(0);
 
             let mut first = true;
             let mut local_idx = 0;
             let mut locals = NamedLocalPrinter::new("local");
             for local in body.get_locals_reader()? {
                 let (cnt, ty) = local?;
-                if MAX_LOCALS
-                    .checked_sub(local_idx)
-                    .and_then(|s| s.checked_sub(cnt))
-                    .is_none()
-                {
+                if MAX_LOCALS.checked_sub(local_idx).and_then(|s| s.checked_sub(cnt)).is_none() {
                     bail!("function exceeds the maximum number of locals that can be printed");
                 }
                 for _ in 0..cnt {
@@ -661,10 +671,18 @@ impl Printer {
                     // When we start a block we newline to the current
                     // indentation, then we increase the indentation so further
                     // instructions are tabbed over.
-                    Operator::If { .. }
-                    | Operator::Block { .. }
-                    | Operator::Loop { .. }
-                    | Operator::Try { .. } => {
+                    Operator::If {
+                        ..
+                    }
+                    | Operator::Block {
+                        ..
+                    }
+                    | Operator::Loop {
+                        ..
+                    }
+                    | Operator::Try {
+                        ..
+                    } => {
                         self.newline();
                         self.nesting += 1;
                     }
@@ -672,7 +690,11 @@ impl Printer {
                     // `else`/`catch` are special in that it's printed at
                     // the previous indentation, but it doesn't actually change
                     // our nesting level.
-                    Operator::Else | Operator::Catch { .. } | Operator::Unwind => {
+                    Operator::Else
+                    | Operator::Catch {
+                        ..
+                    }
+                    | Operator::Unwind => {
                         self.nesting -= 1;
                         self.newline();
                         self.nesting += 1;
@@ -715,60 +737,65 @@ impl Printer {
         match op {
             Nop => self.result.push_str("nop"),
             Unreachable => self.result.push_str("unreachable"),
-            Block { ty } => {
+            Block {
+                ty,
+            } => {
                 self.result.push_str("block");
                 self.print_blockty(ty)?;
                 write!(self.result, "  ;; label = @{}", cur_label)?;
             }
-            Loop { ty } => {
+            Loop {
+                ty,
+            } => {
                 self.result.push_str("loop");
                 self.print_blockty(ty)?;
                 write!(self.result, "  ;; label = @{}", cur_label)?;
             }
-            If { ty } => {
+            If {
+                ty,
+            } => {
                 self.result.push_str("if");
                 self.print_blockty(ty)?;
                 write!(self.result, "  ;; label = @{}", cur_label)?;
             }
             Else => self.result.push_str("else"),
-            Try { ty } => {
+            Try {
+                ty,
+            } => {
                 self.result.push_str("try");
                 self.print_blockty(ty)?;
                 write!(self.result, "  ;; label = @{}", cur_label)?;
             }
-            Catch { index } => {
+            Catch {
+                index,
+            } => {
                 write!(self.result, "catch {}", index)?;
             }
-            Throw { index } => {
+            Throw {
+                index,
+            } => {
                 write!(self.result, "throw {}", index)?;
             }
-            Rethrow { relative_depth } => {
-                write!(
-                    self.result,
-                    "rethrow {} (;{};)",
-                    relative_depth,
-                    label(*relative_depth)
-                )?;
+            Rethrow {
+                relative_depth,
+            } => {
+                write!(self.result, "rethrow {} (;{};)", relative_depth, label(*relative_depth))?;
             }
             Unwind => self.result.push_str("unwind"),
             End => self.result.push_str("end"),
-            Br { relative_depth } => {
-                write!(
-                    self.result,
-                    "br {} (;{};)",
-                    relative_depth,
-                    label(*relative_depth),
-                )?;
+            Br {
+                relative_depth,
+            } => {
+                write!(self.result, "br {} (;{};)", relative_depth, label(*relative_depth),)?;
             }
-            BrIf { relative_depth } => {
-                write!(
-                    self.result,
-                    "br_if {} (;{};)",
-                    relative_depth,
-                    label(*relative_depth),
-                )?;
+            BrIf {
+                relative_depth,
+            } => {
+                write!(self.result, "br_if {} (;{};)", relative_depth, label(*relative_depth),)?;
             }
-            BrTable { table } => {
+            BrTable {
+                table,
+            } => {
                 self.result.push_str("br_table");
                 for item in table.targets() {
                     let (item, _is_default) = item?;
@@ -777,22 +804,32 @@ impl Printer {
             }
 
             Return => self.result.push_str("return"),
-            Call { function_index } => {
+            Call {
+                function_index,
+            } => {
                 self.result.push_str("call ");
                 self.print_func_idx(*function_index)?;
             }
-            CallIndirect { table_index, index } => {
+            CallIndirect {
+                table_index,
+                index,
+            } => {
                 self.result.push_str("call_indirect");
                 if *table_index != 0 {
                     write!(self.result, " {}", table_index)?;
                 }
                 write!(self.result, " (type {})", index)?;
             }
-            ReturnCall { function_index } => {
+            ReturnCall {
+                function_index,
+            } => {
                 self.result.push_str("return_call ");
                 self.print_func_idx(*function_index)?;
             }
-            ReturnCallIndirect { table_index, index } => {
+            ReturnCallIndirect {
+                table_index,
+                index,
+            } => {
                 self.result.push_str("return_call_indirect");
                 if *table_index != 0 {
                     write!(self.result, " {}", table_index)?;
@@ -802,78 +839,160 @@ impl Printer {
 
             Drop => self.result.push_str("drop"),
             Select => self.result.push_str("select"),
-            TypedSelect { ty } => {
+            TypedSelect {
+                ty,
+            } => {
                 self.result.push_str("select (result ");
                 self.print_valtype(*ty)?;
                 self.result.push_str(")");
             }
-            LocalGet { local_index } => {
+            LocalGet {
+                local_index,
+            } => {
                 self.result.push_str("local.get ");
                 self.print_local_idx(self.state.func, *local_index)?;
             }
-            LocalSet { local_index } => {
+            LocalSet {
+                local_index,
+            } => {
                 self.result.push_str("local.set ");
                 self.print_local_idx(self.state.func, *local_index)?;
             }
-            LocalTee { local_index } => {
+            LocalTee {
+                local_index,
+            } => {
                 self.result.push_str("local.tee ");
                 self.print_local_idx(self.state.func, *local_index)?;
             }
 
-            GlobalGet { global_index } => {
+            GlobalGet {
+                global_index,
+            } => {
                 write!(self.result, "global.get {}", global_index)?;
             }
-            GlobalSet { global_index } => {
+            GlobalSet {
+                global_index,
+            } => {
                 write!(self.result, "global.set {}", global_index)?;
             }
 
-            I32Load { memarg } => self.mem_instr("i32.load", memarg, 4)?,
-            I64Load { memarg } => self.mem_instr("i64.load", memarg, 8)?,
-            F32Load { memarg } => self.mem_instr("f32.load", memarg, 4)?,
-            F64Load { memarg } => self.mem_instr("f64.load", memarg, 8)?,
-            I32Load8S { memarg } => self.mem_instr("i32.load8_s", memarg, 1)?,
-            I32Load8U { memarg } => self.mem_instr("i32.load8_u", memarg, 1)?,
-            I32Load16S { memarg } => self.mem_instr("i32.load16_s", memarg, 2)?,
-            I32Load16U { memarg } => self.mem_instr("i32.load16_u", memarg, 2)?,
-            I64Load8S { memarg } => self.mem_instr("i64.load8_s", memarg, 1)?,
-            I64Load8U { memarg } => self.mem_instr("i64.load8_u", memarg, 1)?,
-            I64Load16S { memarg } => self.mem_instr("i64.load16_s", memarg, 2)?,
-            I64Load16U { memarg } => self.mem_instr("i64.load16_u", memarg, 2)?,
-            I64Load32S { memarg } => self.mem_instr("i64.load32_s", memarg, 4)?,
-            I64Load32U { memarg } => self.mem_instr("i64.load32_u", memarg, 4)?,
+            I32Load {
+                memarg,
+            } => self.mem_instr("i32.load", memarg, 4)?,
+            I64Load {
+                memarg,
+            } => self.mem_instr("i64.load", memarg, 8)?,
+            F32Load {
+                memarg,
+            } => self.mem_instr("f32.load", memarg, 4)?,
+            F64Load {
+                memarg,
+            } => self.mem_instr("f64.load", memarg, 8)?,
+            I32Load8S {
+                memarg,
+            } => self.mem_instr("i32.load8_s", memarg, 1)?,
+            I32Load8U {
+                memarg,
+            } => self.mem_instr("i32.load8_u", memarg, 1)?,
+            I32Load16S {
+                memarg,
+            } => self.mem_instr("i32.load16_s", memarg, 2)?,
+            I32Load16U {
+                memarg,
+            } => self.mem_instr("i32.load16_u", memarg, 2)?,
+            I64Load8S {
+                memarg,
+            } => self.mem_instr("i64.load8_s", memarg, 1)?,
+            I64Load8U {
+                memarg,
+            } => self.mem_instr("i64.load8_u", memarg, 1)?,
+            I64Load16S {
+                memarg,
+            } => self.mem_instr("i64.load16_s", memarg, 2)?,
+            I64Load16U {
+                memarg,
+            } => self.mem_instr("i64.load16_u", memarg, 2)?,
+            I64Load32S {
+                memarg,
+            } => self.mem_instr("i64.load32_s", memarg, 4)?,
+            I64Load32U {
+                memarg,
+            } => self.mem_instr("i64.load32_u", memarg, 4)?,
 
-            I32Store { memarg } => self.mem_instr("i32.store", memarg, 4)?,
-            I64Store { memarg } => self.mem_instr("i64.store", memarg, 8)?,
-            F32Store { memarg } => self.mem_instr("f32.store", memarg, 4)?,
-            F64Store { memarg } => self.mem_instr("f64.store", memarg, 8)?,
-            I32Store8 { memarg } => self.mem_instr("i32.store8", memarg, 1)?,
-            I32Store16 { memarg } => self.mem_instr("i32.store16", memarg, 2)?,
-            I64Store8 { memarg } => self.mem_instr("i64.store8", memarg, 1)?,
-            I64Store16 { memarg } => self.mem_instr("i64.store16", memarg, 2)?,
-            I64Store32 { memarg } => self.mem_instr("i64.store32", memarg, 4)?,
+            I32Store {
+                memarg,
+            } => self.mem_instr("i32.store", memarg, 4)?,
+            I64Store {
+                memarg,
+            } => self.mem_instr("i64.store", memarg, 8)?,
+            F32Store {
+                memarg,
+            } => self.mem_instr("f32.store", memarg, 4)?,
+            F64Store {
+                memarg,
+            } => self.mem_instr("f64.store", memarg, 8)?,
+            I32Store8 {
+                memarg,
+            } => self.mem_instr("i32.store8", memarg, 1)?,
+            I32Store16 {
+                memarg,
+            } => self.mem_instr("i32.store16", memarg, 2)?,
+            I64Store8 {
+                memarg,
+            } => self.mem_instr("i64.store8", memarg, 1)?,
+            I64Store16 {
+                memarg,
+            } => self.mem_instr("i64.store16", memarg, 2)?,
+            I64Store32 {
+                memarg,
+            } => self.mem_instr("i64.store32", memarg, 4)?,
 
-            MemorySize { mem: 0, .. } => self.result.push_str("memory.size"),
-            MemorySize { mem, .. } => write!(self.result, "memory.size {}", mem)?,
-            MemoryGrow { mem: 0, .. } => self.result.push_str("memory.grow"),
-            MemoryGrow { mem, .. } => write!(self.result, "memory.grow {}", mem)?,
+            MemorySize {
+                mem: 0,
+                ..
+            } => self.result.push_str("memory.size"),
+            MemorySize {
+                mem,
+                ..
+            } => write!(self.result, "memory.size {}", mem)?,
+            MemoryGrow {
+                mem: 0,
+                ..
+            } => self.result.push_str("memory.grow"),
+            MemoryGrow {
+                mem,
+                ..
+            } => write!(self.result, "memory.grow {}", mem)?,
 
-            I32Const { value } => write!(self.result, "i32.const {}", value)?,
-            I64Const { value } => write!(self.result, "i64.const {}", value)?,
-            F32Const { value } => {
+            I32Const {
+                value,
+            } => write!(self.result, "i32.const {}", value)?,
+            I64Const {
+                value,
+            } => write!(self.result, "i64.const {}", value)?,
+            F32Const {
+                value,
+            } => {
                 self.result.push_str("f32.const ");
                 self.print_f32(value.bits())?;
             }
-            F64Const { value } => {
+            F64Const {
+                value,
+            } => {
                 self.result.push_str("f64.const ");
                 self.print_f64(value.bits())?;
             }
 
-            RefNull { ty } => {
+            RefNull {
+                ty,
+            } => {
                 self.result.push_str("ref.null ");
                 self.print_reftype(*ty)?;
             }
             RefIsNull => self.result.push_str("ref.is_null"),
-            RefFunc { function_index } => {
+            RefFunc {
+                function_index,
+            } => {
                 self.result.push_str("ref.func ");
                 self.print_func_idx(*function_index)?;
             }
@@ -1027,22 +1146,45 @@ impl Printer {
             I64TruncSatF64S => self.result.push_str("i64.trunc_sat_f64_s"),
             I64TruncSatF64U => self.result.push_str("i64.trunc_sat_f64_u"),
 
-            MemoryInit { segment, mem: 0 } => write!(self.result, "memory.init {}", segment)?,
-            MemoryInit { segment, mem } => write!(self.result, "memory.init {} {}", segment, mem)?,
-            DataDrop { segment } => write!(self.result, "data.drop {}", segment)?,
-            MemoryCopy { src: 0, dst: 0 } => self.result.push_str("memory.copy"),
-            MemoryCopy { src, dst } => write!(self.result, "memory.copy {} {}", dst, src)?,
-            MemoryFill { mem: 0 } => self.result.push_str("memory.fill"),
-            MemoryFill { mem } => write!(self.result, "memory.fill {}", mem)?,
+            MemoryInit {
+                segment,
+                mem: 0,
+            } => write!(self.result, "memory.init {}", segment)?,
+            MemoryInit {
+                segment,
+                mem,
+            } => write!(self.result, "memory.init {} {}", segment, mem)?,
+            DataDrop {
+                segment,
+            } => write!(self.result, "data.drop {}", segment)?,
+            MemoryCopy {
+                src: 0,
+                dst: 0,
+            } => self.result.push_str("memory.copy"),
+            MemoryCopy {
+                src,
+                dst,
+            } => write!(self.result, "memory.copy {} {}", dst, src)?,
+            MemoryFill {
+                mem: 0,
+            } => self.result.push_str("memory.fill"),
+            MemoryFill {
+                mem,
+            } => write!(self.result, "memory.fill {}", mem)?,
 
-            TableInit { table, segment } => {
+            TableInit {
+                table,
+                segment,
+            } => {
                 if *table == 0 {
                     write!(self.result, "table.init {}", segment)?
                 } else {
                     write!(self.result, "table.init {} {}", table, segment)?
                 }
             }
-            ElemDrop { segment } => write!(self.result, "elem.drop {}", segment)?,
+            ElemDrop {
+                segment,
+            } => write!(self.result, "elem.drop {}", segment)?,
             TableCopy {
                 dst_table,
                 src_table,
@@ -1053,112 +1195,242 @@ impl Printer {
                     write!(self.result, "table.copy {} {}", dst_table, src_table)?
                 }
             }
-            TableGet { table } => write!(self.result, "table.get {}", table)?,
-            TableSet { table } => write!(self.result, "table.set {}", table)?,
-            TableGrow { table } => write!(self.result, "table.grow {}", table)?,
-            TableSize { table } => write!(self.result, "table.size {}", table)?,
-            TableFill { table } => write!(self.result, "table.fill {}", table)?,
+            TableGet {
+                table,
+            } => write!(self.result, "table.get {}", table)?,
+            TableSet {
+                table,
+            } => write!(self.result, "table.set {}", table)?,
+            TableGrow {
+                table,
+            } => write!(self.result, "table.grow {}", table)?,
+            TableSize {
+                table,
+            } => write!(self.result, "table.size {}", table)?,
+            TableFill {
+                table,
+            } => write!(self.result, "table.fill {}", table)?,
 
-            MemoryAtomicNotify { memarg } => self.mem_instr("memory.atomic.notify", memarg, 4)?,
-            MemoryAtomicWait32 { memarg } => self.mem_instr("memory.atomic.wait32", memarg, 4)?,
-            MemoryAtomicWait64 { memarg } => self.mem_instr("memory.atomic.wait64", memarg, 8)?,
-            AtomicFence { flags: _ } => self.result.push_str("atomic.fence"),
+            MemoryAtomicNotify {
+                memarg,
+            } => self.mem_instr("memory.atomic.notify", memarg, 4)?,
+            MemoryAtomicWait32 {
+                memarg,
+            } => self.mem_instr("memory.atomic.wait32", memarg, 4)?,
+            MemoryAtomicWait64 {
+                memarg,
+            } => self.mem_instr("memory.atomic.wait64", memarg, 8)?,
+            AtomicFence {
+                flags: _,
+            } => self.result.push_str("atomic.fence"),
 
-            I32AtomicLoad { memarg } => self.mem_instr("i32.atomic.load", memarg, 4)?,
-            I64AtomicLoad { memarg } => self.mem_instr("i64.atomic.load", memarg, 8)?,
-            I32AtomicLoad8U { memarg } => self.mem_instr("i32.atomic.load8_u", memarg, 1)?,
-            I32AtomicLoad16U { memarg } => self.mem_instr("i32.atomic.load16_u", memarg, 2)?,
-            I64AtomicLoad8U { memarg } => self.mem_instr("i64.atomic.load8_u", memarg, 1)?,
-            I64AtomicLoad16U { memarg } => self.mem_instr("i64.atomic.load16_u", memarg, 2)?,
-            I64AtomicLoad32U { memarg } => self.mem_instr("i64.atomic.load32_u", memarg, 4)?,
+            I32AtomicLoad {
+                memarg,
+            } => self.mem_instr("i32.atomic.load", memarg, 4)?,
+            I64AtomicLoad {
+                memarg,
+            } => self.mem_instr("i64.atomic.load", memarg, 8)?,
+            I32AtomicLoad8U {
+                memarg,
+            } => self.mem_instr("i32.atomic.load8_u", memarg, 1)?,
+            I32AtomicLoad16U {
+                memarg,
+            } => self.mem_instr("i32.atomic.load16_u", memarg, 2)?,
+            I64AtomicLoad8U {
+                memarg,
+            } => self.mem_instr("i64.atomic.load8_u", memarg, 1)?,
+            I64AtomicLoad16U {
+                memarg,
+            } => self.mem_instr("i64.atomic.load16_u", memarg, 2)?,
+            I64AtomicLoad32U {
+                memarg,
+            } => self.mem_instr("i64.atomic.load32_u", memarg, 4)?,
 
-            I32AtomicStore { memarg } => self.mem_instr("i32.atomic.store", memarg, 4)?,
-            I64AtomicStore { memarg } => self.mem_instr("i64.atomic.store", memarg, 8)?,
-            I32AtomicStore8 { memarg } => self.mem_instr("i32.atomic.store8", memarg, 1)?,
-            I32AtomicStore16 { memarg } => self.mem_instr("i32.atomic.store16", memarg, 2)?,
-            I64AtomicStore8 { memarg } => self.mem_instr("i64.atomic.store8", memarg, 1)?,
-            I64AtomicStore16 { memarg } => self.mem_instr("i64.atomic.store16", memarg, 2)?,
-            I64AtomicStore32 { memarg } => self.mem_instr("i64.atomic.store32", memarg, 4)?,
+            I32AtomicStore {
+                memarg,
+            } => self.mem_instr("i32.atomic.store", memarg, 4)?,
+            I64AtomicStore {
+                memarg,
+            } => self.mem_instr("i64.atomic.store", memarg, 8)?,
+            I32AtomicStore8 {
+                memarg,
+            } => self.mem_instr("i32.atomic.store8", memarg, 1)?,
+            I32AtomicStore16 {
+                memarg,
+            } => self.mem_instr("i32.atomic.store16", memarg, 2)?,
+            I64AtomicStore8 {
+                memarg,
+            } => self.mem_instr("i64.atomic.store8", memarg, 1)?,
+            I64AtomicStore16 {
+                memarg,
+            } => self.mem_instr("i64.atomic.store16", memarg, 2)?,
+            I64AtomicStore32 {
+                memarg,
+            } => self.mem_instr("i64.atomic.store32", memarg, 4)?,
 
-            I32AtomicRmwAdd { memarg } => self.mem_instr("i32.atomic.rmw.add", memarg, 4)?,
-            I64AtomicRmwAdd { memarg } => self.mem_instr("i64.atomic.rmw.add", memarg, 8)?,
-            I32AtomicRmw8AddU { memarg } => self.mem_instr("i32.atomic.rmw8.add_u", memarg, 1)?,
-            I32AtomicRmw16AddU { memarg } => self.mem_instr("i32.atomic.rmw16.add_u", memarg, 2)?,
-            I64AtomicRmw8AddU { memarg } => self.mem_instr("i64.atomic.rmw8.add_u", memarg, 1)?,
-            I64AtomicRmw16AddU { memarg } => self.mem_instr("i64.atomic.rmw16.add_u", memarg, 2)?,
-            I64AtomicRmw32AddU { memarg } => self.mem_instr("i64.atomic.rmw32.add_u", memarg, 4)?,
+            I32AtomicRmwAdd {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.add", memarg, 4)?,
+            I64AtomicRmwAdd {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.add", memarg, 8)?,
+            I32AtomicRmw8AddU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.add_u", memarg, 1)?,
+            I32AtomicRmw16AddU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.add_u", memarg, 2)?,
+            I64AtomicRmw8AddU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.add_u", memarg, 1)?,
+            I64AtomicRmw16AddU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.add_u", memarg, 2)?,
+            I64AtomicRmw32AddU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.add_u", memarg, 4)?,
 
-            I32AtomicRmwSub { memarg } => self.mem_instr("i32.atomic.rmw.sub", memarg, 4)?,
-            I64AtomicRmwSub { memarg } => self.mem_instr("i64.atomic.rmw.sub", memarg, 8)?,
-            I32AtomicRmw8SubU { memarg } => self.mem_instr("i32.atomic.rmw8.sub_u", memarg, 1)?,
-            I32AtomicRmw16SubU { memarg } => self.mem_instr("i32.atomic.rmw16.sub_u", memarg, 2)?,
-            I64AtomicRmw8SubU { memarg } => self.mem_instr("i64.atomic.rmw8.sub_u", memarg, 1)?,
-            I64AtomicRmw16SubU { memarg } => self.mem_instr("i64.atomic.rmw16.sub_u", memarg, 2)?,
-            I64AtomicRmw32SubU { memarg } => self.mem_instr("i64.atomic.rmw32.sub_u", memarg, 4)?,
+            I32AtomicRmwSub {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.sub", memarg, 4)?,
+            I64AtomicRmwSub {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.sub", memarg, 8)?,
+            I32AtomicRmw8SubU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.sub_u", memarg, 1)?,
+            I32AtomicRmw16SubU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.sub_u", memarg, 2)?,
+            I64AtomicRmw8SubU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.sub_u", memarg, 1)?,
+            I64AtomicRmw16SubU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.sub_u", memarg, 2)?,
+            I64AtomicRmw32SubU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.sub_u", memarg, 4)?,
 
-            I32AtomicRmwAnd { memarg } => self.mem_instr("i32.atomic.rmw.and", memarg, 4)?,
-            I64AtomicRmwAnd { memarg } => self.mem_instr("i64.atomic.rmw.and", memarg, 8)?,
-            I32AtomicRmw8AndU { memarg } => self.mem_instr("i32.atomic.rmw8.and_u", memarg, 1)?,
-            I32AtomicRmw16AndU { memarg } => self.mem_instr("i32.atomic.rmw16.and_u", memarg, 2)?,
-            I64AtomicRmw8AndU { memarg } => self.mem_instr("i64.atomic.rmw8.and_u", memarg, 1)?,
-            I64AtomicRmw16AndU { memarg } => self.mem_instr("i64.atomic.rmw16.and_u", memarg, 2)?,
-            I64AtomicRmw32AndU { memarg } => self.mem_instr("i64.atomic.rmw32.and_u", memarg, 4)?,
+            I32AtomicRmwAnd {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.and", memarg, 4)?,
+            I64AtomicRmwAnd {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.and", memarg, 8)?,
+            I32AtomicRmw8AndU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.and_u", memarg, 1)?,
+            I32AtomicRmw16AndU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.and_u", memarg, 2)?,
+            I64AtomicRmw8AndU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.and_u", memarg, 1)?,
+            I64AtomicRmw16AndU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.and_u", memarg, 2)?,
+            I64AtomicRmw32AndU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.and_u", memarg, 4)?,
 
-            I32AtomicRmwOr { memarg } => self.mem_instr("i32.atomic.rmw.or", memarg, 4)?,
-            I64AtomicRmwOr { memarg } => self.mem_instr("i64.atomic.rmw.or", memarg, 8)?,
-            I32AtomicRmw8OrU { memarg } => self.mem_instr("i32.atomic.rmw8.or_u", memarg, 1)?,
-            I32AtomicRmw16OrU { memarg } => self.mem_instr("i32.atomic.rmw16.or_u", memarg, 2)?,
-            I64AtomicRmw8OrU { memarg } => self.mem_instr("i64.atomic.rmw8.or_u", memarg, 1)?,
-            I64AtomicRmw16OrU { memarg } => self.mem_instr("i64.atomic.rmw16.or_u", memarg, 2)?,
-            I64AtomicRmw32OrU { memarg } => self.mem_instr("i64.atomic.rmw32.or_u", memarg, 4)?,
+            I32AtomicRmwOr {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.or", memarg, 4)?,
+            I64AtomicRmwOr {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.or", memarg, 8)?,
+            I32AtomicRmw8OrU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.or_u", memarg, 1)?,
+            I32AtomicRmw16OrU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.or_u", memarg, 2)?,
+            I64AtomicRmw8OrU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.or_u", memarg, 1)?,
+            I64AtomicRmw16OrU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.or_u", memarg, 2)?,
+            I64AtomicRmw32OrU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.or_u", memarg, 4)?,
 
-            I32AtomicRmwXor { memarg } => self.mem_instr("i32.atomic.rmw.xor", memarg, 4)?,
-            I64AtomicRmwXor { memarg } => self.mem_instr("i64.atomic.rmw.xor", memarg, 8)?,
-            I32AtomicRmw8XorU { memarg } => self.mem_instr("i32.atomic.rmw8.xor_u", memarg, 1)?,
-            I32AtomicRmw16XorU { memarg } => self.mem_instr("i32.atomic.rmw16.xor_u", memarg, 2)?,
-            I64AtomicRmw8XorU { memarg } => self.mem_instr("i64.atomic.rmw8.xor_u", memarg, 1)?,
-            I64AtomicRmw16XorU { memarg } => self.mem_instr("i64.atomic.rmw16.xor_u", memarg, 2)?,
-            I64AtomicRmw32XorU { memarg } => self.mem_instr("i64.atomic.rmw32.xor_u", memarg, 4)?,
+            I32AtomicRmwXor {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.xor", memarg, 4)?,
+            I64AtomicRmwXor {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.xor", memarg, 8)?,
+            I32AtomicRmw8XorU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.xor_u", memarg, 1)?,
+            I32AtomicRmw16XorU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.xor_u", memarg, 2)?,
+            I64AtomicRmw8XorU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.xor_u", memarg, 1)?,
+            I64AtomicRmw16XorU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.xor_u", memarg, 2)?,
+            I64AtomicRmw32XorU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.xor_u", memarg, 4)?,
 
-            I32AtomicRmwXchg { memarg } => self.mem_instr("i32.atomic.rmw.xchg", memarg, 4)?,
-            I64AtomicRmwXchg { memarg } => self.mem_instr("i64.atomic.rmw.xchg", memarg, 8)?,
-            I32AtomicRmw8XchgU { memarg } => self.mem_instr("i32.atomic.rmw8.xchg_u", memarg, 1)?,
-            I32AtomicRmw16XchgU { memarg } => {
-                self.mem_instr("i32.atomic.rmw16.xchg_u", memarg, 2)?
-            }
-            I64AtomicRmw8XchgU { memarg } => self.mem_instr("i64.atomic.rmw8.xchg_u", memarg, 1)?,
-            I64AtomicRmw16XchgU { memarg } => {
-                self.mem_instr("i64.atomic.rmw16.xchg_u", memarg, 2)?
-            }
-            I64AtomicRmw32XchgU { memarg } => {
-                self.mem_instr("i64.atomic.rmw32.xchg_u", memarg, 4)?
-            }
+            I32AtomicRmwXchg {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.xchg", memarg, 4)?,
+            I64AtomicRmwXchg {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.xchg", memarg, 8)?,
+            I32AtomicRmw8XchgU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.xchg_u", memarg, 1)?,
+            I32AtomicRmw16XchgU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.xchg_u", memarg, 2)?,
+            I64AtomicRmw8XchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.xchg_u", memarg, 1)?,
+            I64AtomicRmw16XchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.xchg_u", memarg, 2)?,
+            I64AtomicRmw32XchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.xchg_u", memarg, 4)?,
 
-            I32AtomicRmwCmpxchg { memarg } => {
-                self.mem_instr("i32.atomic.rmw.cmpxchg", memarg, 4)?
-            }
-            I64AtomicRmwCmpxchg { memarg } => {
-                self.mem_instr("i64.atomic.rmw.cmpxchg", memarg, 8)?
-            }
-            I32AtomicRmw8CmpxchgU { memarg } => {
-                self.mem_instr("i32.atomic.rmw8.cmpxchg_u", memarg, 1)?
-            }
-            I32AtomicRmw16CmpxchgU { memarg } => {
-                self.mem_instr("i32.atomic.rmw16.cmpxchg_u", memarg, 2)?
-            }
-            I64AtomicRmw8CmpxchgU { memarg } => {
-                self.mem_instr("i64.atomic.rmw8.cmpxchg_u", memarg, 1)?
-            }
-            I64AtomicRmw16CmpxchgU { memarg } => {
-                self.mem_instr("i64.atomic.rmw16.cmpxchg_u", memarg, 2)?
-            }
-            I64AtomicRmw32CmpxchgU { memarg } => {
-                self.mem_instr("i64.atomic.rmw32.cmpxchg_u", memarg, 4)?
-            }
+            I32AtomicRmwCmpxchg {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw.cmpxchg", memarg, 4)?,
+            I64AtomicRmwCmpxchg {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw.cmpxchg", memarg, 8)?,
+            I32AtomicRmw8CmpxchgU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw8.cmpxchg_u", memarg, 1)?,
+            I32AtomicRmw16CmpxchgU {
+                memarg,
+            } => self.mem_instr("i32.atomic.rmw16.cmpxchg_u", memarg, 2)?,
+            I64AtomicRmw8CmpxchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw8.cmpxchg_u", memarg, 1)?,
+            I64AtomicRmw16CmpxchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw16.cmpxchg_u", memarg, 2)?,
+            I64AtomicRmw32CmpxchgU {
+                memarg,
+            } => self.mem_instr("i64.atomic.rmw32.cmpxchg_u", memarg, 4)?,
 
-            V128Load { memarg } => self.mem_instr("v128.load", memarg, 16)?,
-            V128Store { memarg } => self.mem_instr("v128.store", memarg, 16)?,
-            V128Const { value } => {
+            V128Load {
+                memarg,
+            } => self.mem_instr("v128.load", memarg, 16)?,
+            V128Store {
+                memarg,
+            } => self.mem_instr("v128.store", memarg, 16)?,
+            V128Const {
+                value,
+            } => {
                 write!(self.result, "v128.const i32x4")?;
                 for chunk in value.bytes().chunks(4) {
                     write!(
@@ -1170,25 +1442,53 @@ impl Printer {
             }
 
             I8x16Splat => self.result.push_str("i8x16.splat"),
-            I8x16ExtractLaneS { lane } => write!(self.result, "i8x16.extract_lane_s {}", lane)?,
-            I8x16ExtractLaneU { lane } => write!(self.result, "i8x16.extract_lane_u {}", lane)?,
-            I8x16ReplaceLane { lane } => write!(self.result, "i8x16.replace_lane {}", lane)?,
+            I8x16ExtractLaneS {
+                lane,
+            } => write!(self.result, "i8x16.extract_lane_s {}", lane)?,
+            I8x16ExtractLaneU {
+                lane,
+            } => write!(self.result, "i8x16.extract_lane_u {}", lane)?,
+            I8x16ReplaceLane {
+                lane,
+            } => write!(self.result, "i8x16.replace_lane {}", lane)?,
             I16x8Splat => self.result.push_str("i16x8.splat"),
-            I16x8ExtractLaneS { lane } => write!(self.result, "i16x8.extract_lane_s {}", lane)?,
-            I16x8ExtractLaneU { lane } => write!(self.result, "i16x8.extract_lane_u {}", lane)?,
-            I16x8ReplaceLane { lane } => write!(self.result, "i16x8.replace_lane {}", lane)?,
+            I16x8ExtractLaneS {
+                lane,
+            } => write!(self.result, "i16x8.extract_lane_s {}", lane)?,
+            I16x8ExtractLaneU {
+                lane,
+            } => write!(self.result, "i16x8.extract_lane_u {}", lane)?,
+            I16x8ReplaceLane {
+                lane,
+            } => write!(self.result, "i16x8.replace_lane {}", lane)?,
             I32x4Splat => self.result.push_str("i32x4.splat"),
-            I32x4ExtractLane { lane } => write!(self.result, "i32x4.extract_lane {}", lane)?,
-            I32x4ReplaceLane { lane } => write!(self.result, "i32x4.replace_lane {}", lane)?,
+            I32x4ExtractLane {
+                lane,
+            } => write!(self.result, "i32x4.extract_lane {}", lane)?,
+            I32x4ReplaceLane {
+                lane,
+            } => write!(self.result, "i32x4.replace_lane {}", lane)?,
             I64x2Splat => self.result.push_str("i64x2.splat"),
-            I64x2ExtractLane { lane } => write!(self.result, "i64x2.extract_lane {}", lane)?,
-            I64x2ReplaceLane { lane } => write!(self.result, "i64x2.replace_lane {}", lane)?,
+            I64x2ExtractLane {
+                lane,
+            } => write!(self.result, "i64x2.extract_lane {}", lane)?,
+            I64x2ReplaceLane {
+                lane,
+            } => write!(self.result, "i64x2.replace_lane {}", lane)?,
             F32x4Splat => self.result.push_str("f32x4.splat"),
-            F32x4ExtractLane { lane } => write!(self.result, "f32x4.extract_lane {}", lane)?,
-            F32x4ReplaceLane { lane } => write!(self.result, "f32x4.replace_lane {}", lane)?,
+            F32x4ExtractLane {
+                lane,
+            } => write!(self.result, "f32x4.extract_lane {}", lane)?,
+            F32x4ReplaceLane {
+                lane,
+            } => write!(self.result, "f32x4.replace_lane {}", lane)?,
             F64x2Splat => self.result.push_str("f64x2.splat"),
-            F64x2ExtractLane { lane } => write!(self.result, "f64x2.extract_lane {}", lane)?,
-            F64x2ReplaceLane { lane } => write!(self.result, "f64x2.replace_lane {}", lane)?,
+            F64x2ExtractLane {
+                lane,
+            } => write!(self.result, "f64x2.extract_lane {}", lane)?,
+            F64x2ReplaceLane {
+                lane,
+            } => write!(self.result, "f64x2.replace_lane {}", lane)?,
 
             I8x16Eq => self.result.push_str("i8x16.eq"),
             I8x16Ne => self.result.push_str("i8x16.ne"),
@@ -1332,19 +1632,33 @@ impl Printer {
             F32x4ConvertI32x4U => self.result.push_str("f32x4.convert_i32x4_u"),
 
             I8x16Swizzle => self.result.push_str("i8x16.swizzle"),
-            I8x16Shuffle { lanes } => {
+            I8x16Shuffle {
+                lanes,
+            } => {
                 self.result.push_str("i8x16.shuffle");
                 for lane in lanes {
                     write!(self.result, " {}", lane)?;
                 }
             }
-            V128Load8Splat { memarg } => self.mem_instr("v128.load8_splat", memarg, 1)?,
-            V128Load16Splat { memarg } => self.mem_instr("v128.load16_splat", memarg, 2)?,
-            V128Load32Splat { memarg } => self.mem_instr("v128.load32_splat", memarg, 4)?,
-            V128Load64Splat { memarg } => self.mem_instr("v128.load64_splat", memarg, 8)?,
+            V128Load8Splat {
+                memarg,
+            } => self.mem_instr("v128.load8_splat", memarg, 1)?,
+            V128Load16Splat {
+                memarg,
+            } => self.mem_instr("v128.load16_splat", memarg, 2)?,
+            V128Load32Splat {
+                memarg,
+            } => self.mem_instr("v128.load32_splat", memarg, 4)?,
+            V128Load64Splat {
+                memarg,
+            } => self.mem_instr("v128.load64_splat", memarg, 8)?,
 
-            V128Load32Zero { memarg } => self.mem_instr("v128.load32_zero", memarg, 4)?,
-            V128Load64Zero { memarg } => self.mem_instr("v128.load64_zero", memarg, 8)?,
+            V128Load32Zero {
+                memarg,
+            } => self.mem_instr("v128.load32_zero", memarg, 4)?,
+            V128Load64Zero {
+                memarg,
+            } => self.mem_instr("v128.load64_zero", memarg, 8)?,
 
             I8x16NarrowI16x8S => self.result.push_str("i8x16.narrow_i16x8_s"),
             I8x16NarrowI16x8U => self.result.push_str("i8x16.narrow_i16x8_u"),
@@ -1379,43 +1693,79 @@ impl Printer {
 
             I16x8Q15MulrSatS => self.result.push_str("i16x8.q15mulr_sat_s"),
 
-            V128Load8x8S { memarg } => self.mem_instr("v128.load8x8_s", memarg, 8)?,
-            V128Load8x8U { memarg } => self.mem_instr("v128.load8x8_u", memarg, 8)?,
-            V128Load16x4S { memarg } => self.mem_instr("v128.load16x4_s", memarg, 8)?,
-            V128Load16x4U { memarg } => self.mem_instr("v128.load16x4_u", memarg, 8)?,
-            V128Load32x2S { memarg } => self.mem_instr("v128.load32x2_s", memarg, 8)?,
-            V128Load32x2U { memarg } => self.mem_instr("v128.load32x2_u", memarg, 8)?,
+            V128Load8x8S {
+                memarg,
+            } => self.mem_instr("v128.load8x8_s", memarg, 8)?,
+            V128Load8x8U {
+                memarg,
+            } => self.mem_instr("v128.load8x8_u", memarg, 8)?,
+            V128Load16x4S {
+                memarg,
+            } => self.mem_instr("v128.load16x4_s", memarg, 8)?,
+            V128Load16x4U {
+                memarg,
+            } => self.mem_instr("v128.load16x4_u", memarg, 8)?,
+            V128Load32x2S {
+                memarg,
+            } => self.mem_instr("v128.load32x2_s", memarg, 8)?,
+            V128Load32x2U {
+                memarg,
+            } => self.mem_instr("v128.load32x2_u", memarg, 8)?,
 
-            V128Load8Lane { memarg, lane } => {
+            V128Load8Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.load8_lane", memarg, 1)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Load16Lane { memarg, lane } => {
+            V128Load16Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.load16_lane", memarg, 2)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Load32Lane { memarg, lane } => {
+            V128Load32Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.load32_lane", memarg, 4)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Load64Lane { memarg, lane } => {
+            V128Load64Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.load64_lane", memarg, 8)?;
                 write!(self.result, " {}", lane)?;
             }
 
-            V128Store8Lane { memarg, lane } => {
+            V128Store8Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.store8_lane", memarg, 1)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Store16Lane { memarg, lane } => {
+            V128Store16Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.store16_lane", memarg, 2)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Store32Lane { memarg, lane } => {
+            V128Store32Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.store32_lane", memarg, 4)?;
                 write!(self.result, " {}", lane)?;
             }
-            V128Store64Lane { memarg, lane } => {
+            V128Store64Lane {
+                memarg,
+                lane,
+            } => {
                 self.mem_instr("v128.store64_lane", memarg, 8)?;
                 write!(self.result, " {}", lane)?;
             }
@@ -1793,8 +2143,8 @@ impl Printer {
 }
 
 struct NamedLocalPrinter {
-    group_name: &'static str,
-    in_group: bool,
+    group_name:            &'static str,
+    in_group:              bool,
     end_group_after_local: bool,
 }
 
@@ -1840,6 +2190,7 @@ impl NamedLocalPrinter {
             self.in_group = false;
         }
     }
+
     fn finish(self, dst: &mut String) {
         if self.in_group {
             dst.push_str(")");
@@ -1933,6 +2284,7 @@ macro_rules! print_float {
 
 impl Printer {
     print_float!(print_f32 f32 u32 i32 8);
+
     print_float!(print_f64 f64 u64 i64 11);
 }
 
@@ -1944,7 +2296,13 @@ impl Naming {
         } else {
             let identifier = name
                 .chars()
-                .map(|c| if is_idchar(c) { c } else { '_' })
+                .map(|c| {
+                    if is_idchar(c) {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
                 .collect::<String>();
             let mut count = 0;
             loop {

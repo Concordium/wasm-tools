@@ -6,14 +6,13 @@ use super::*;
 ///
 /// ```
 /// use wasm_encoder::{
-///     Elements, ElementSection, Instruction, Module, TableSection, TableType,
-///     Limits, ValType,
+///     ElementSection, Elements, Instruction, Limits, Module, TableSection, TableType, ValType,
 /// };
 ///
 /// let mut tables = TableSection::new();
 /// tables.table(TableType {
 ///     element_type: ValType::FuncRef,
-///     limits: Limits {
+///     limits:       Limits {
 ///         min: 128,
 ///         max: None,
 ///     },
@@ -29,14 +28,12 @@ use super::*;
 /// elements.active(Some(table_index), offset, element_type, functions);
 ///
 /// let mut module = Module::new();
-/// module
-///     .section(&tables)
-///     .section(&elements);
+/// module.section(&tables).section(&elements);
 ///
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct ElementSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -92,7 +89,7 @@ impl ElementSection {
     /// Create a new element section encoder.
     pub fn new() -> ElementSection {
         ElementSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -146,8 +143,7 @@ impl ElementSection {
 
         match segment.elements {
             Elements::Functions(fs) => {
-                self.bytes
-                    .extend(encoders::u32(u32::try_from(fs.len()).unwrap()));
+                self.bytes.extend(encoders::u32(u32::try_from(fs.len()).unwrap()));
                 for f in fs {
                     self.bytes.extend(encoders::u32(*f));
                 }
@@ -212,14 +208,11 @@ impl ElementSection {
 }
 
 impl Section for ElementSection {
-    fn id(&self) -> u8 {
-        SectionId::Element.into()
-    }
+    fn id(&self) -> u8 { SectionId::Element.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

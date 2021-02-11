@@ -3,9 +3,7 @@ use std::cell::Cell;
 
 thread_local!(static NEXT: Cell<u32> = Cell::new(0));
 
-pub fn reset() {
-    NEXT.with(|c| c.set(0));
-}
+pub fn reset() { NEXT.with(|c| c.set(0)); }
 
 pub fn gen(span: Span) -> Id<'static> {
     NEXT.with(|next| {

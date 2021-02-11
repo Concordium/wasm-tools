@@ -23,14 +23,9 @@
 //! this is not the right library for you. You could however, build such
 //! a data-structure using this library.
 
-pub use crate::binary_reader::BinaryReader;
-pub use crate::binary_reader::Range;
+pub use crate::binary_reader::{BinaryReader, Range};
 
-pub use crate::module_resources::*;
-pub use crate::parser::*;
-pub use crate::primitives::*;
-pub use crate::readers::*;
-pub use crate::validator::*;
+pub use crate::{module_resources::*, parser::*, primitives::*, readers::*, validator::*};
 
 mod binary_reader;
 mod limits;

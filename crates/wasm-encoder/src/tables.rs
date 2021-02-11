@@ -5,12 +5,12 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, TableSection, TableType, Limits, ValType};
+/// use wasm_encoder::{Limits, Module, TableSection, TableType, ValType};
 ///
 /// let mut tables = TableSection::new();
 /// tables.table(TableType {
 ///     element_type: ValType::FuncRef,
-///     limits: Limits {
+///     limits:       Limits {
 ///         min: 128,
 ///         max: None,
 ///     },
@@ -22,7 +22,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct TableSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -30,7 +30,7 @@ impl TableSection {
     /// Construct a new table section encoder.
     pub fn new() -> TableSection {
         TableSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -44,14 +44,11 @@ impl TableSection {
 }
 
 impl Section for TableSection {
-    fn id(&self) -> u8 {
-        SectionId::Table.into()
-    }
+    fn id(&self) -> u8 { SectionId::Table.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

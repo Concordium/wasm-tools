@@ -6,19 +6,15 @@ use std::convert::TryFrom;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, ImportSection, MemoryType, Limits};
+/// use wasm_encoder::{ImportSection, Limits, MemoryType, Module};
 ///
 /// let mut imports = ImportSection::new();
-/// imports.import(
-///     "env",
-///     Some("memory"),
-///     MemoryType {
-///         limits: Limits {
-///             min: 1,
-///             max: None,
-///         }
-///     }
-/// );
+/// imports.import("env", Some("memory"), MemoryType {
+///     limits: Limits {
+///         min: 1,
+///         max: None,
+///     },
+/// });
 ///
 /// let mut module = Module::new();
 /// module.section(&imports);
@@ -26,7 +22,7 @@ use std::convert::TryFrom;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct ImportSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -34,7 +30,7 @@ impl ImportSection {
     /// Construct a new import section encoder.
     pub fn new() -> ImportSection {
         ImportSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -61,14 +57,11 @@ impl ImportSection {
 }
 
 impl Section for ImportSection {
-    fn id(&self) -> u8 {
-        SectionId::Import.into()
-    }
+    fn id(&self) -> u8 { SectionId::Import.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(
@@ -100,21 +93,15 @@ pub enum EntityType {
 // adding support for module linking anyways.
 
 impl From<TableType> for EntityType {
-    fn from(t: TableType) -> Self {
-        EntityType::Table(t)
-    }
+    fn from(t: TableType) -> Self { EntityType::Table(t) }
 }
 
 impl From<MemoryType> for EntityType {
-    fn from(m: MemoryType) -> Self {
-        EntityType::Memory(m)
-    }
+    fn from(m: MemoryType) -> Self { EntityType::Memory(m) }
 }
 
 impl From<GlobalType> for EntityType {
-    fn from(g: GlobalType) -> Self {
-        EntityType::Global(g)
-    }
+    fn from(g: GlobalType) -> Self { EntityType::Global(g) }
 }
 
 impl EntityType {

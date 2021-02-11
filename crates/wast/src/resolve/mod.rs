@@ -1,5 +1,4 @@
-use crate::ast::*;
-use crate::Error;
+use crate::{ast::*, Error};
 
 mod aliases;
 mod deinline_import_export;
@@ -77,7 +76,9 @@ pub fn resolve<'a>(module: &mut Module<'a>) -> Result<Names<'a>, Error> {
     // Perform name resolution over all `Index` items to resolve them all to
     // indices instead of symbolic names.
     let resolver = names::resolve(module.id, fields)?;
-    Ok(Names { resolver })
+    Ok(Names {
+        resolver,
+    })
 }
 
 /// Representation of the results of name resolution for a module.

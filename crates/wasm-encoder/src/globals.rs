@@ -5,13 +5,13 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, GlobalSection, GlobalType, Instruction, ValType};
+/// use wasm_encoder::{GlobalSection, GlobalType, Instruction, Module, ValType};
 ///
 /// let mut globals = GlobalSection::new();
 /// globals.global(
 ///     GlobalType {
 ///         val_type: ValType::I32,
-///         mutable: false,
+///         mutable:  false,
 ///     },
 ///     Instruction::I32Const(42),
 /// );
@@ -22,7 +22,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct GlobalSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -30,7 +30,7 @@ impl GlobalSection {
     /// Create a new global section encoder.
     pub fn new() -> GlobalSection {
         GlobalSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -46,14 +46,11 @@ impl GlobalSection {
 }
 
 impl Section for GlobalSection {
-    fn id(&self) -> u8 {
-        SectionId::Global.into()
-    }
+    fn id(&self) -> u8 { SectionId::Global.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

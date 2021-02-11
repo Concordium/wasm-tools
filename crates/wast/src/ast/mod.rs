@@ -13,7 +13,7 @@
 /// This can then be used to parse custom keyword for custom items, such as:
 ///
 /// ```
-/// use wast::parser::{Parser, Result, Parse};
+/// use wast::parser::{Parse, Parser, Result};
 ///
 /// struct InlineModule<'a> {
 ///     inline_text: &'a str,
@@ -36,7 +36,8 @@
 /// }
 /// ```
 ///
-/// Note that the keyword name can only start with a lower-case letter, i.e. 'a'..'z'.
+/// Note that the keyword name can only start with a lower-case letter, i.e.
+/// 'a'..'z'.
 #[macro_export]
 macro_rules! custom_keyword {
     ($name:ident) => {
@@ -70,9 +71,7 @@ macro_rules! custom_keyword {
                 }
             }
 
-            fn display() -> &'static str {
-                concat!("`", $kw, "`")
-            }
+            fn display() -> &'static str { concat!("`", $kw, "`") }
         }
     };
 }
@@ -83,7 +82,7 @@ macro_rules! custom_keyword {
 /// instead of keywords (`Token::Keyword`).
 ///
 /// ```
-/// use wast::parser::{Parser, Result, Parse};
+/// use wast::parser::{Parse, Parser, Result};
 ///
 /// // Define a custom reserved symbol, the "spaceship" operator: `<=>`.
 /// wast::custom_reserved!(spaceship = "<=>");
@@ -100,7 +99,10 @@ macro_rules! custom_keyword {
 ///         parser.parse::<spaceship>()?;
 ///         let lhs = parser.parse()?;
 ///         let rhs = parser.parse()?;
-///         Ok(ThreeWayComparison { lhs, rhs })
+///         Ok(ThreeWayComparison {
+///             lhs,
+///             rhs,
+///         })
 ///     }
 /// }
 /// ```
@@ -137,9 +139,7 @@ macro_rules! custom_reserved {
                 }
             }
 
-            fn display() -> &'static str {
-                concat!("`", $rsv, "`")
-            }
+            fn display() -> &'static str { concat!("`", $rsv, "`") }
         }
     };
 }
@@ -175,7 +175,7 @@ macro_rules! custom_reserved {
 /// }
 ///
 /// struct Producer<'a> {
-///     name: &'a str,
+///     name:    &'a str,
 ///     version: &'a str,
 /// }
 ///
@@ -186,7 +186,7 @@ macro_rules! custom_reserved {
 ///         // parse the payload of our annotation.
 ///         parser.parse::<annotation::producer>()?;
 ///         Ok(Producer {
-///             name: parser.parse()?,
+///             name:    parser.parse()?,
 ///             version: parser.parse()?,
 ///         })
 ///     }
@@ -222,7 +222,9 @@ macro_rules! custom_reserved {
 ///         while !parser.is_empty() {
 ///             fields.push(parser.parens(|p| p.parse())?);
 ///         }
-///         Ok(Module { fields })
+///         Ok(Module {
+///             fields,
+///         })
 ///     }
 /// }
 ///
@@ -286,9 +288,7 @@ macro_rules! annotation {
                 }
             }
 
-            fn display() -> &'static str {
-                concat!("`@", $annotation, "`")
-            }
+            fn display() -> &'static str { concat!("`@", $annotation, "`") }
         }
     };
 }

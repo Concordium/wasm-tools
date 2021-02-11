@@ -20,34 +20,34 @@ use super::{
 
 #[derive(Debug, Copy, Clone)]
 pub struct ModuleName<'a> {
-    data: &'a [u8],
+    data:   &'a [u8],
     offset: usize,
 }
 
 impl<'a> ModuleName<'a> {
     pub fn get_name<'b>(&self) -> Result<&'b str>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let mut reader = BinaryReader::new_with_offset(self.data, self.offset);
         reader.read_string()
     }
 
-    pub fn original_position(&self) -> usize {
-        self.offset
-    }
+    pub fn original_position(&self) -> usize { self.offset }
 }
 
 pub struct NamingReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> NamingReader<'a> {
     fn new(data: &'a [u8], offset: usize) -> Result<NamingReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(NamingReader { reader, count })
+        Ok(NamingReader {
+            reader,
+            count,
+        })
     }
 
     fn skip(reader: &mut BinaryReader) -> Result<()> {
@@ -59,87 +59,77 @@ impl<'a> NamingReader<'a> {
         Ok(())
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     pub fn read<'b>(&mut self) -> Result<Naming<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let index = self.reader.read_var_u32()?;
         let name = self.reader.read_string()?;
-        Ok(Naming { index, name })
+        Ok(Naming {
+            index,
+            name,
+        })
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunctionName<'a> {
-    data: &'a [u8],
+    data:   &'a [u8],
     offset: usize,
 }
 
 impl<'a> FunctionName<'a> {
     pub fn get_map<'b>(&self) -> Result<NamingReader<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         NamingReader::new(self.data, self.offset)
     }
 
-    pub fn original_position(&self) -> usize {
-        self.offset
-    }
+    pub fn original_position(&self) -> usize { self.offset }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunctionLocalName<'a> {
     pub func_index: u32,
-    data: &'a [u8],
-    offset: usize,
+    data:           &'a [u8],
+    offset:         usize,
 }
 
 impl<'a> FunctionLocalName<'a> {
     pub fn get_map<'b>(&self) -> Result<NamingReader<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         NamingReader::new(self.data, self.offset)
     }
 
-    pub fn original_position(&self) -> usize {
-        self.offset
-    }
+    pub fn original_position(&self) -> usize { self.offset }
 }
 
 pub struct FunctionLocalReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> FunctionLocalReader<'a> {
     fn new(data: &'a [u8], offset: usize) -> Result<FunctionLocalReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(FunctionLocalReader { reader, count })
+        Ok(FunctionLocalReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
     pub fn read<'b>(&mut self) -> Result<FunctionLocalName<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let func_index = self.reader.read_var_u32()?;
         let start = self.reader.position;
         NamingReader::skip(&mut self.reader)?;
@@ -154,21 +144,18 @@ impl<'a> FunctionLocalReader<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct LocalName<'a> {
-    data: &'a [u8],
+    data:   &'a [u8],
     offset: usize,
 }
 
 impl<'a> LocalName<'a> {
     pub fn get_function_local_reader<'b>(&self) -> Result<FunctionLocalReader<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         FunctionLocalReader::new(self.data, self.offset)
     }
 
-    pub fn original_position(&self) -> usize {
-        self.offset
-    }
+    pub fn original_position(&self) -> usize { self.offset }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -199,18 +186,13 @@ impl<'a> NameSectionReader<'a> {
         Ok(())
     }
 
-    pub fn eof(&self) -> bool {
-        self.reader.eof()
-    }
+    pub fn eof(&self) -> bool { self.reader.eof() }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
     pub fn read<'b>(&mut self) -> Result<Name<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let ty = self.reader.read_name_type()?;
         let payload_len = self.reader.read_var_u32()? as usize;
         let payload_start = self.reader.position;
@@ -220,34 +202,37 @@ impl<'a> NameSectionReader<'a> {
         let data = &self.reader.buffer[payload_start..payload_end];
         self.reader.skip_to(payload_end);
         Ok(match ty {
-            NameType::Module => Name::Module(ModuleName { data, offset }),
-            NameType::Function => Name::Function(FunctionName { data, offset }),
-            NameType::Local => Name::Local(LocalName { data, offset }),
+            NameType::Module => Name::Module(ModuleName {
+                data,
+                offset,
+            }),
+            NameType::Function => Name::Function(FunctionName {
+                data,
+                offset,
+            }),
+            NameType::Local => Name::Local(LocalName {
+                data,
+                offset,
+            }),
         })
     }
 }
 
 impl<'a> SectionReader for NameSectionReader<'a> {
     type Item = Name<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        NameSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        NameSectionReader::eof(self)
-    }
-    fn original_position(&self) -> usize {
-        NameSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { NameSectionReader::read(self) }
+
+    fn eof(&self) -> bool { NameSectionReader::eof(self) }
+
+    fn original_position(&self) -> usize { NameSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> IntoIterator for NameSectionReader<'a> {
-    type Item = Result<Name<'a>>;
     type IntoIter = SectionIterator<NameSectionReader<'a>>;
+    type Item = Result<Name<'a>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIterator::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIterator::new(self) }
 }

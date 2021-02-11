@@ -7,9 +7,9 @@ use super::*;
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct HostFunction {
     pub mod_name: &'static str,
-    pub name: &'static str,
-    pub params: Vec<ValType>,
-    pub result: Option<ValType>,
+    pub name:     &'static str,
+    pub params:   Vec<ValType>,
+    pub result:   Option<ValType>,
 }
 
 type FuncType = (Vec<ValType>, Option<ValType>);
@@ -28,17 +28,15 @@ type FuncType = (Vec<ValType>, Option<ValType>);
 /// need to override the methods for things you want to change away from the
 /// default.
 pub trait Config: Arbitrary + Default + Clone {
-    /// The minimum number of types to generate, excluding types of imports and auxiliary export types. Defaults to 0.
-    fn min_types(&self) -> usize {
-        0
-    }
+    /// The minimum number of types to generate, excluding types of imports and
+    /// auxiliary export types. Defaults to 0.
+    fn min_types(&self) -> usize { 0 }
 
     /// The maximum number of types to generate. Defaults to 100.
-    fn max_types(&self) -> usize {
-        100
-    }
+    fn max_types(&self) -> usize { 100 }
 
-    /// The return types of functions that can be exported. If None, any return types are allowed.
+    /// The return types of functions that can be exported. If None, any return
+    /// types are allowed.
     fn allowed_export_types(&self) -> Option<Vec<FuncType>> { None }
 
     /// The minimum number of imports to generate. Defaults to 0.
@@ -52,112 +50,76 @@ pub trait Config: Arbitrary + Default + Clone {
     /// [^1]: the maximum number of functions is also limited by the number of
     ///       function types arbitrarily chosen; strictly speaking, then, the
     ///       maximum number of imports that can be created due to
-    ///       max-constraints is `sum(min(num_func_types, max_funcs), max_tables,
-    ///       max_globals, max_memories)`.
-    fn min_imports(&self) -> usize {
-        0
-    }
+    ///       max-constraints is `sum(min(num_func_types, max_funcs),
+    /// max_tables,       max_globals, max_memories)`.
+    fn min_imports(&self) -> usize { 0 }
 
     /// The maximum number of imports to generate. Defaults to 100.
-    fn max_imports(&self) -> usize {
-        20
-    }
+    fn max_imports(&self) -> usize { 20 }
 
     /// The minimum number of functions to generate. Defaults to 0.  This
     /// includes imported functions.
-    fn min_funcs(&self) -> usize {
-        0
-    }
+    fn min_funcs(&self) -> usize { 0 }
 
     /// The maximum number of functions to generate. Defaults to 100.  This
     /// includes imported functions.
-    fn max_funcs(&self) -> usize {
-        100
-    }
+    fn max_funcs(&self) -> usize { 100 }
 
     /// The minimum number of globals to generate. Defaults to 0.  This includes
     /// imported globals.
-    fn min_globals(&self) -> usize {
-        0
-    }
+    fn min_globals(&self) -> usize { 0 }
 
     /// The maximum number of globals to generate. Defaults to 100.  This
     /// includes imported globals.
-    fn max_globals(&self) -> usize {
-        100
-    }
+    fn max_globals(&self) -> usize { 100 }
 
     /// The minimum number of exports to generate. Defaults to 0.
-    fn min_exports(&self) -> usize {
-        0
-    }
+    fn min_exports(&self) -> usize { 0 }
 
     /// The maximum number of exports to generate. Defaults to 100.
-    fn max_exports(&self) -> usize {
-        100
-    }
+    fn max_exports(&self) -> usize { 100 }
 
     /// The minimum number of element segments to generate. Defaults to 0.
-    fn min_element_segments(&self) -> usize {
-        0
-    }
+    fn min_element_segments(&self) -> usize { 0 }
 
     /// The maximum number of element segments to generate. Defaults to 100.
-    fn max_element_segments(&self) -> usize {
-        100
-    }
+    fn max_element_segments(&self) -> usize { 100 }
 
     /// The minimum number of elements within a segment to generate. Defaults to
     /// 0.
-    fn min_elements(&self) -> usize {
-        0
-    }
+    fn min_elements(&self) -> usize { 0 }
 
     /// The maximum number of elements within a segment to generate. Defaults to
     /// 100.
-    fn max_elements(&self) -> usize {
-        100
-    }
+    fn max_elements(&self) -> usize { 100 }
 
     /// The minimum number of data segments to generate. Defaults to 0.
-    fn min_data_segments(&self) -> usize {
-        0
-    }
+    fn min_data_segments(&self) -> usize { 0 }
 
     /// The maximum number of data segments to generate. Defaults to 100.
-    fn max_data_segments(&self) -> usize {
-        100
-    }
+    fn max_data_segments(&self) -> usize { 100 }
 
     /// The maximum number of instructions to generate in a function
     /// body. Defaults to 100.
     ///
     /// Note that some additional `end`s, `else`s, and `unreachable`s may be
     /// appended to the function body to finish block scopes.
-    fn max_instructions(&self) -> usize {
-        100
-    }
+    fn max_instructions(&self) -> usize { 100 }
 
     /// The minimum number of memories to use. Defaults to 0. This includes
     /// imported memories.
-    fn min_memories(&self) -> u32 {
-        0
-    }
+    fn min_memories(&self) -> u32 { 0 }
 
     /// The maximum number of memories to use. Defaults to 1. This includes
     /// imported memories.
     ///
     /// Note that more than one memory is in the realm of the multi-memory wasm
     /// proposal.
-    fn max_memories(&self) -> usize {
-        1
-    }
+    fn max_memories(&self) -> usize { 1 }
 
     /// The minimum number of tables to use. Defaults to 0. This includes
     /// imported tables.
-    fn min_tables(&self) -> u32 {
-        0
-    }
+    fn min_tables(&self) -> u32 { 0 }
 
     /// The upper bound on the minimum limit when a table is initialized
     fn max_init_table_size(&self) -> u32 { 1_000_000 }
@@ -167,21 +129,15 @@ pub trait Config: Arbitrary + Default + Clone {
     ///
     /// Note that more than one table is in the realm of the reference types
     /// proposal.
-    fn max_tables(&self) -> usize {
-        1
-    }
+    fn max_tables(&self) -> usize { 1 }
 
     /// The maximum, in 64k Wasm pages, of any memory's initial or maximum size.
     /// Defaults to 2^16 = 65536 (the maximum possible for 32-bit Wasm).
-    fn max_memory_pages(&self) -> u32 {
-        65536
-    }
+    fn max_memory_pages(&self) -> u32 { 65536 }
 
     /// Whether every Wasm memory must have a maximum size specified. Defaults
     /// to `false`.
-    fn memory_max_size_required(&self) -> bool {
-        false
-    }
+    fn memory_max_size_required(&self) -> bool { false }
 
     /// Control the probability of generating memory offsets that are in bounds
     /// vs. potentially out of bounds.
@@ -208,9 +164,7 @@ pub trait Config: Arbitrary + Default + Clone {
     /// 0)`.
     ///
     /// By default, returns `(75, 24, 1)`.
-    fn memory_offset_choices(&self) -> (u32, u32, u32) {
-        (75, 24, 1)
-    }
+    fn memory_offset_choices(&self) -> (u32, u32, u32) { (75, 24, 1) }
 
     /// The minimum size, in bytes, of all leb-encoded integers. Defaults to 1.
     ///
@@ -218,22 +172,17 @@ pub trait Config: Arbitrary + Default + Clone {
     /// such rather than as simply one byte. This will forcibly extend leb
     /// integers with an over-long encoding in some locations if the size would
     /// otherwise be smaller than number returned here.
-    fn min_uleb_size(&self) -> u8 {
-        1
-    }
+    fn min_uleb_size(&self) -> u8 { 1 }
 
     /// Determines whether the bulk memory proposal is enabled for generating
     /// insructions. Defaults to `false`.
-    fn bulk_memory_enabled(&self) -> bool {
-        false
-    }
+    fn bulk_memory_enabled(&self) -> bool { false }
 
     /// Determines whether a `start` export may be included. Defaults to `true`.
-    fn allow_start_export(&self) -> bool {
-        true
-    }
+    fn allow_start_export(&self) -> bool { true }
 
-    /// The set of admissible host functions that can be imported into the module
+    /// The set of admissible host functions that can be imported into the
+    /// module
     fn host_functions(&self) -> Vec<HostFunction> { Vec::new() }
 
     /// Allow arbitrary instructions?
@@ -257,9 +206,7 @@ impl Config for DefaultConfig {}
 pub struct InterpreterConfig;
 
 impl Config for InterpreterConfig {
-
     fn host_functions(&self) -> Vec<HostFunction> {
-
         let hosts = [
             ("accept", Vec::new(), Some(I32)),
             ("simple_transfer", vec![I32, I64], Some(I32)),
@@ -281,39 +228,27 @@ impl Config for InterpreterConfig {
             ("get_receive_sender", vec![I32], None),
             ("get_receive_owner", vec![I32], None),
             ("get_slot_time", Vec::new(), Some(I64)),
-        ].map(|(name, params, ret)|
-            HostFunction {
-                mod_name: "concordium",
-                name: name,
-                params: params,
-                result: ret
-            });
+        ]
+        .map(|(name, params, ret)| HostFunction {
+            mod_name: "concordium",
+            name,
+            params,
+            result: ret,
+        });
         hosts.to_vec()
     }
 
-    fn max_imports(&self) -> usize {
-        20
-    }
+    fn max_imports(&self) -> usize { 20 }
 
-    fn min_imports(&self) -> usize {
-        2
-    }
+    fn min_imports(&self) -> usize { 2 }
 
-    fn max_exports(&self) -> usize {
-        100
-    }
+    fn max_exports(&self) -> usize { 100 }
 
-    fn min_exports(&self) -> usize {
-        1
-    }
+    fn min_exports(&self) -> usize { 1 }
 
-    fn min_types(&self) -> usize {
-        1
-    }
+    fn min_types(&self) -> usize { 1 }
 
-    fn min_funcs(&self) -> usize {
-        2
-    }
+    fn min_funcs(&self) -> usize { 2 }
 
     fn allow_start_export(&self) -> bool { false }
 
@@ -327,9 +262,9 @@ impl Config for InterpreterConfig {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])
     }
 
-    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false } // TODO (MRA) When CB-1165 is done, set this to true
+    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false }
 
-    fn max_memory_pages(&self) -> u32 {
-        32
-    }
+    // TODO (MRA) When CB-1165 is done, set this to true
+
+    fn max_memory_pages(&self) -> u32 { 32 }
 }

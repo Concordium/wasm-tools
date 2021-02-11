@@ -20,59 +20,49 @@ use super::{
 
 pub struct LinkingSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> LinkingSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<LinkingSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(LinkingSectionReader { reader, count })
+        Ok(LinkingSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
     pub fn read<'b>(&mut self) -> Result<LinkingType>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         Ok(self.reader.read_linking_type()?)
     }
 }
 
 impl<'a> SectionReader for LinkingSectionReader<'a> {
     type Item = LinkingType;
-    fn read(&mut self) -> Result<Self::Item> {
-        LinkingSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        LinkingSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { LinkingSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { LinkingSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for LinkingSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        LinkingSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { LinkingSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for LinkingSectionReader<'a> {
-    type Item = Result<LinkingType>;
     type IntoIter = SectionIteratorLimited<LinkingSectionReader<'a>>;
+    type Item = Result<LinkingType>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

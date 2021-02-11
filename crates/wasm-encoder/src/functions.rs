@@ -5,7 +5,7 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, FunctionSection, ValType};
+/// use wasm_encoder::{FunctionSection, Module, ValType};
 ///
 /// let mut functions = FunctionSection::new();
 /// let type_index = 0;
@@ -21,7 +21,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct FunctionSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -29,7 +29,7 @@ impl FunctionSection {
     /// Construct a new function section encoder.
     pub fn new() -> FunctionSection {
         FunctionSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -43,14 +43,11 @@ impl FunctionSection {
 }
 
 impl Section for FunctionSection {
-    fn id(&self) -> u8 {
-        SectionId::Function.into()
-    }
+    fn id(&self) -> u8 { SectionId::Function.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

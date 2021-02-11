@@ -16,9 +16,8 @@
 //!   module for you. You likely won't use this much.
 //!
 //! * [`parser`] - this is the workhorse of this crate. The [`parser`] module
-//!   provides the [`Parse`][] trait primarily and utilities
-//!   around working with a [`Parser`](`parser::Parser`) to parse streams of
-//!   tokens.
+//!   provides the [`Parse`][] trait primarily and utilities around working with
+//!   a [`Parser`](`parser::Parser`) to parse streams of tokens.
 //!
 //! * [`Module`] - this contains an Abstract Syntax Tree (AST) of the
 //!   WebAssembly Text format (WAT) as well as the unofficial WAST format. This
@@ -47,8 +46,10 @@
 
 #![deny(missing_docs, broken_intra_doc_links)]
 
-use std::fmt;
-use std::path::{Path, PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 #[cfg(feature = "wasm-module")]
 mod binary;
@@ -86,8 +87,8 @@ struct ErrorInner {
 
 #[derive(Debug)]
 struct Text {
-    line: usize,
-    col: usize,
+    line:    usize,
+    col:     usize,
     snippet: String,
 }
 
@@ -141,9 +142,7 @@ impl Error {
     }
 
     /// Return the `Span` for this error.
-    pub fn span(&self) -> Span {
-        self.inner.span
-    }
+    pub fn span(&self) -> Span { self.inner.span }
 
     /// To provide a more useful error this function can be used to extract
     /// relevant textual information about this error into the error itself.
@@ -199,12 +198,7 @@ impl fmt::Display for Error {
                 return write!(f, "{} at byte offset {}", err, self.inner.span.offset);
             }
         };
-        let file = self
-            .inner
-            .file
-            .as_ref()
-            .and_then(|p| p.to_str())
-            .unwrap_or("<anon>");
+        let file = self.inner.file.as_ref().and_then(|p| p.to_str()).unwrap_or("<anon>");
         write!(
             f,
             "\
@@ -230,6 +224,10 @@ impl Text {
     fn new(content: &str, span: Span) -> Text {
         let (line, col) = span.linecol_in(content);
         let snippet = content.lines().nth(line).unwrap_or("").to_string();
-        Text { line, col, snippet }
+        Text {
+            line,
+            col,
+            snippet,
+        }
     }
 }

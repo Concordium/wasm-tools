@@ -53,19 +53,22 @@
 // Needed for the `instructions!` macro in `src/code_builder.rs`.
 #![recursion_limit = "256"]
 
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
-use std::str;
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    str,
+};
 
 use arbitrary::{Arbitrary, Result, Unstructured};
 
 pub use config::{Config, DefaultConfig, InterpreterConfig};
 use ValType::{I32, I64};
 
-use crate::code_builder::CodeBuilderAllocations;
-use crate::config::HostFunction;
-use std::cmp::{max, min};
-use std::sync::atomic::{AtomicU8, Ordering};
+use crate::{code_builder::CodeBuilderAllocations, config::HostFunction};
+use std::{
+    cmp::{max, min},
+    sync::atomic::{AtomicU8, Ordering},
+};
 
 mod code_builder;
 mod config;
@@ -100,9 +103,8 @@ const PAGE_SIZE: u32 = 65536;
 #[derive(Debug, Default)]
 pub struct ConfiguredModule<C>
 where
-    C: Config,
-{
-    config: C,
+    C: Config, {
+    config:   C,
     valtypes: Vec<ValType>,
 
     /// The initial sections of this wasm module, including types and imports.
@@ -140,16 +142,19 @@ where
     host_func_types: Vec<usize>,
 
     /// Number of imported items into this module.
-    num_imports: usize, // todo (MRA) remove this and only use imported funcs because we only allow importing functions
+    num_imports: usize, /* todo (MRA) remove this and only use imported funcs because we only
+                         * allow importing functions */
     /// Names of already imported host functions
     imported_funcs: Vec<String>,
-    /// Indices within `types` that can be types of functions that can be exported
+    /// Indices within `types` that can be types of functions that can be
+    /// exported
     valid_export_types: Vec<usize>,
     /// Indices within `types` that are used for the auxiliary export functions
     auxiliary_export_types: Vec<usize>,
     /// Indices within `funcs` that are auxiliary functions,
-    /// along with the index to the function they call (index in `funcs`, and the required return type (index in `types`)
-    /// TODO (MRA) This is all horrible. Encode this stuff in the type system.
+    /// along with the index to the function they call (index in `funcs`, and
+    /// the required return type (index in `types`) TODO (MRA) This is all
+    /// horrible. Encode this stuff in the type system.
     auxiliary_funcs: Vec<(usize, usize, usize)>,
 
     /// The number of functions defined in this module (not imported or
@@ -194,17 +199,15 @@ where
     memories: Vec<MemoryType>,
 
     exports: Vec<(String, Export)>,
-    start: Option<u32>,
-    elems: Vec<ElementSegment>,
-    code: Vec<Code>,
-    data: Vec<DataSegment>,
+    start:   Option<u32>,
+    elems:   Vec<ElementSegment>,
+    code:    Vec<Code>,
+    data:    Vec<DataSegment>,
 }
 
 impl<C: Config> ConfiguredModule<C> {
     /// Returns a reference to the internal configuration.
-    pub fn config(&self) -> &C {
-        &self.config
-    }
+    pub fn config(&self) -> &C { &self.config }
 }
 
 impl<C: Config> Arbitrary for ConfiguredModule<C> {
@@ -226,16 +229,16 @@ pub struct MaybeInvalidModule {
 
 impl MaybeInvalidModule {
     /// Encode this Wasm module into bytes.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.module.to_bytes()
-    }
+    pub fn to_bytes(&self) -> Vec<u8> { self.module.to_bytes() }
 }
 
 impl Arbitrary for MaybeInvalidModule {
     fn arbitrary(u: &mut Unstructured) -> Result<Self> {
         let mut module = Module::default();
         module.inner.build(u, module.inner.config.allow_arbitrary_instr())?;
-        Ok(MaybeInvalidModule { module })
+        Ok(MaybeInvalidModule {
+            module,
+        })
     }
 }
 
@@ -248,10 +251,10 @@ enum InitialSection {
 /// Representation of a function type
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct FuncType {
-    params: Vec<ValType>,
-    result: Option<ValType>,
+    params:        Vec<ValType>,
+    result:        Option<ValType>,
     host_function: Option<HostFunction>,
-    auxiliary: bool,
+    auxiliary:     bool,
 }
 
 #[derive(Clone, Debug)]
@@ -274,7 +277,7 @@ pub enum ValType {
 
 #[derive(Clone, Debug)]
 struct TableType {
-    limits: Limits,
+    limits:  Limits,
     elem_ty: ValType,
 }
 
@@ -293,22 +296,27 @@ impl Limits {
     fn limited(u: &mut Unstructured, max_minimum: u32, max_required: bool) -> Result<Self> {
         let min = u.int_in_range(0..=max_minimum)?;
         let max = if max_required || u.arbitrary().unwrap_or(false) {
-            Some(if min == max_minimum {
-                max_minimum
-            } else {
-                u.int_in_range(min..=max_minimum)?
-            })
+            Some(
+                if min == max_minimum {
+                    max_minimum
+                } else {
+                    u.int_in_range(min..=max_minimum)?
+                },
+            )
         } else {
             None
         };
-        Ok(Limits { min, max })
+        Ok(Limits {
+            min,
+            max,
+        })
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 struct GlobalType {
     val_type: ValType,
-    mutable: bool,
+    mutable:  bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -321,15 +329,16 @@ enum Export {
 
 #[derive(Debug)]
 struct ElementSegment {
-    kind: ElementKind,
-    ty: ValType,
+    kind:  ElementKind,
+    ty:    ValType,
     items: Elements,
 }
 
 #[derive(Debug)]
-enum ElementKind { // TODO (MRA) get rid of single enum
+enum ElementKind {
+    // TODO (MRA) get rid of single enum
     Active {
-        table: Option<u32>, // None == table 0 implicitly
+        table:  Option<u32>, // None == table 0 implicitly
         offset: Instruction,
     },
 }
@@ -342,7 +351,7 @@ enum Elements {
 
 #[derive(Debug)]
 struct Code {
-    locals: Vec<ValType>,
+    locals:       Vec<ValType>,
     instructions: Instructions,
 }
 
@@ -362,8 +371,7 @@ enum BlockType {
 impl BlockType {
     fn params_results<C>(&self, module: &ConfiguredModule<C>) -> (Vec<ValType>, Vec<ValType>)
     where
-        C: Config,
-    {
+        C: Config, {
         match self {
             BlockType::Empty => (vec![], vec![]),
             BlockType::Result(t) => (vec![], vec![*t]),
@@ -377,8 +385,8 @@ impl BlockType {
 
 #[derive(Clone, Copy, Debug)]
 struct MemArg {
-    offset: u32,
-    align: u32,
+    offset:       u32,
+    align:        u32,
     memory_index: u32,
 }
 
@@ -398,7 +406,10 @@ enum Instruction {
     BrTable(Vec<u32>, u32),
     Return,
     Call(u32),
-    CallIndirect { ty: u32, table: u32 },
+    CallIndirect {
+        ty:    u32,
+        table: u32,
+    },
 
     // Parametric instructions.
     Drop,
@@ -433,9 +444,15 @@ enum Instruction {
     I64Store32(MemArg),
     MemorySize(u32),
     MemoryGrow(u32),
-    MemoryInit { mem: u32, data: u32 },
+    MemoryInit {
+        mem:  u32,
+        data: u32,
+    },
     DataDrop(u32),
-    MemoryCopy { src: u32, dst: u32 },
+    MemoryCopy {
+        src: u32,
+        dst: u32,
+    },
     MemoryFill(u32),
 
     // Numeric instructions.
@@ -518,7 +535,7 @@ enum DataSegmentKind {
     Passive,
     Active {
         memory_index: u32,
-        offset: Instruction,
+        offset:       Instruction,
     },
 }
 
@@ -528,8 +545,10 @@ where
 {
     fn validate_config(&self) {
         let config = &self.config;
-        assert!(config.min_imports() <= config.min_funcs(),
-               "The min number of imports cannot exceed min number of functions.");
+        assert!(
+            config.min_imports() <= config.min_funcs(),
+            "The min number of imports cannot exceed min number of functions."
+        );
     }
 
     fn build(&mut self, u: &mut Unstructured, allow_invalid: bool) -> Result<()> {
@@ -563,12 +582,18 @@ where
         // succeed.
         let section_idx = self.initial_sections.len();
         self.initial_sections.push(InitialSection::Type(Vec::new()));
-        // TODO (MRA) Here we first generate non-host-function types and then host-function types. Intersperse them?
-        arbitrary_loop(u, self.config.min_types(), self.config.max_types() - self.types.len(), |u| {
-            let ty = self.arbitrary_func_type(u)?;
-            self.add_type_to_initial_section(section_idx, ty);
-            Ok(true)
-        })?;
+        // TODO (MRA) Here we first generate non-host-function types and then
+        // host-function types. Intersperse them?
+        arbitrary_loop(
+            u,
+            self.config.min_types(),
+            self.config.max_types() - self.types.len(),
+            |u| {
+                let ty = self.arbitrary_func_type(u)?;
+                self.add_type_to_initial_section(section_idx, ty);
+                Ok(true)
+            },
+        )?;
         arbitrary_loop(u, self.config.min_imports(), self.config.max_imports(), |u| {
             let ty = self.arbitrary_hf_func_type(u)?;
             self.add_type_to_initial_section(section_idx, ty);
@@ -579,11 +604,16 @@ where
             // for all non-exportable functions so that they are reachable.
             Some(types) => {
                 for (params, result) in types {
-                    let ty = FuncType { params: params, result: result, host_function: None, auxiliary: true };
+                    let ty = FuncType {
+                        params,
+                        result,
+                        host_function: None,
+                        auxiliary: true,
+                    };
                     self.add_type_to_initial_section(section_idx, Rc::new(ty));
                 }
             }
-            None => ()
+            None => (),
         }
         let types = match self.initial_sections.last_mut().unwrap() {
             InitialSection::Type(list) => list,
@@ -603,29 +633,32 @@ where
         };
         self.types.push(Defined {
             section: section_idx,
-            nth: types.len(),
+            nth:     types.len(),
         });
         types.push(ty);
     }
 
     fn record_type(&mut self, ty: &Rc<FuncType>) {
-        let list =
-            if ty.host_function.is_some() {
-                &mut self.host_func_types
-            } else {
-                &mut self.func_types
-            };
-        let types_idx = self.types.len(); // TODO (MRA) This is very brittle. It relies on the fact that after record_type is called we will add the type to `types`
+        let list = if ty.host_function.is_some() {
+            &mut self.host_func_types
+        } else {
+            &mut self.func_types
+        };
+        let types_idx = self.types.len(); // TODO (MRA) This is very brittle. It relies on the fact that after record_type
+                                          // is called we will add the type to `types`
         match self.config.allowed_export_types() {
             Some(types) => {
-                if ty.host_function.is_none() && types.contains(&(ty.params.clone(), ty.result.clone())) {
+                if ty.host_function.is_none()
+                    && types.contains(&(ty.params.clone(), ty.result.clone()))
+                {
                     self.valid_export_types.push(types_idx);
                 }
                 if ty.auxiliary {
                     self.auxiliary_export_types.push(types_idx);
                 }
             }
-            _ => { // Return types are not restricted so add type
+            _ => {
+                // Return types are not restricted so add type
                 self.valid_export_types.push(types_idx);
             }
         }
@@ -642,7 +675,12 @@ where
         if u.arbitrary()? {
             result = Some(self.arbitrary_valtype(u)?);
         }
-        Ok(Rc::new(FuncType { params, result, host_function: None, auxiliary: false }))
+        Ok(Rc::new(FuncType {
+            params,
+            result,
+            host_function: None,
+            auxiliary: false,
+        }))
     }
 
     fn arbitrary_hf_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
@@ -650,7 +688,12 @@ where
         let hfs = self.config().host_functions();
         let hf = u.choose(&hfs)?;
         let ret_type = hf.result;
-        Ok(Rc::new(FuncType { params: hf.params.clone(), result: ret_type, host_function: Some(hf.clone()), auxiliary: false }))
+        Ok(Rc::new(FuncType {
+            params:        hf.params.clone(),
+            result:        ret_type,
+            host_function: Some(hf.clone()),
+            auxiliary:     false,
+        }))
     }
 
     fn can_add_local_func(&self) -> bool {
@@ -661,41 +704,47 @@ where
         self.host_func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
     }
 
-    fn can_add_local_or_import_table(&self) -> bool {
-       self.tables.len() < self.config.max_tables()
-    }
+    fn can_add_local_or_import_table(&self) -> bool { self.tables.len() < self.config.max_tables() }
 
     fn can_add_local_or_import_global(&self) -> bool {
-       self.globals.len() < self.config.max_globals()
+        self.globals.len() < self.config.max_globals()
     }
 
     fn can_add_local_or_import_memory(&self) -> bool {
-       self.memories.len() < self.config.max_memories()
+        self.memories.len() < self.config.max_memories()
     }
 
     fn arbitrary_imports(&mut self, u: &mut Unstructured) -> Result<()> {
         let mut imports = Vec::new();
-        arbitrary_loop(u, self.config.min_imports(), self.config.max_imports() - self.num_imports, |u| {
-            if self.can_add_import_func() {
-                let idx = u.choose(&self.host_func_types)?;
-                let ty = self.func_type(*idx).clone();
-                match &ty.host_function {
-                    Some(hf) => {
-                        let hf_name = String::from(hf.name);
-                        if !self.imported_funcs.contains(&hf_name) {
-                            self.imported_funcs.push(hf_name);
-                            self.funcs.push((*idx as usize, ty.clone()));
-                            self.num_imports += 1;
-                            imports.push((String::from(hf.mod_name), Some(String::from(hf.name)), FunctionType::Func(*idx, ty)))
+        arbitrary_loop(
+            u,
+            self.config.min_imports(),
+            self.config.max_imports() - self.num_imports,
+            |u| {
+                if self.can_add_import_func() {
+                    let idx = u.choose(&self.host_func_types)?;
+                    let ty = self.func_type(*idx).clone();
+                    match &ty.host_function {
+                        Some(hf) => {
+                            let hf_name = String::from(hf.name);
+                            if !self.imported_funcs.contains(&hf_name) {
+                                self.imported_funcs.push(hf_name);
+                                self.funcs.push((*idx as usize, ty.clone()));
+                                self.num_imports += 1;
+                                imports.push((
+                                    String::from(hf.mod_name),
+                                    Some(String::from(hf.name)),
+                                    FunctionType::Func(*idx, ty),
+                                ))
+                            }
                         }
+                        None => panic!("Only host functions can be imported"),
                     }
-                    None =>
-                        panic!("Only host functions can be imported"),
                 }
-            }
 
-            Ok(true)
-        })?;
+                Ok(true)
+            },
+        )?;
         if !imports.is_empty() || u.arbitrary()? {
             self.initial_sections.push(InitialSection::Import(imports));
         }
@@ -711,7 +760,10 @@ where
 
     fn ty(&self, idx: usize) -> &Rc<FuncType> {
         match &self.types[idx as usize] {
-            Defined { section, nth } => {
+            Defined {
+                section,
+                nth,
+            } => {
                 if let InitialSection::Type(list) = &self.initial_sections[*section] {
                     return &list[*nth];
                 }
@@ -729,15 +781,10 @@ where
             .map(move |type_i| (type_i, &**self.func_type(type_i)))
     }
 
-    fn func_type(&self, idx: usize) -> &Rc<FuncType> {
-        self.ty(idx)
-    }
+    fn func_type(&self, idx: usize) -> &Rc<FuncType> { self.ty(idx) }
 
     fn funcs<'a>(&'a self) -> impl Iterator<Item = (u32, &'a Rc<FuncType>)> + 'a {
-        self.funcs
-            .iter()
-            .enumerate()
-            .map(move |(i, (_, ty))| (i as u32, ty))
+        self.funcs.iter().enumerate().map(move |(i, (_, ty))| (i as u32, ty))
     }
 
     fn arbitrary_valtype(&self, u: &mut Unstructured) -> Result<ValType> {
@@ -747,14 +794,14 @@ where
     fn arbitrary_global_type(&self, u: &mut Unstructured) -> Result<GlobalType> {
         Ok(GlobalType {
             val_type: self.arbitrary_valtype(u)?,
-            mutable: u.arbitrary()?,
+            mutable:  u.arbitrary()?,
         })
     }
 
     fn arbitrary_table_type(&self, u: &mut Unstructured) -> Result<TableType> {
         Ok(TableType {
             elem_ty: ValType::FuncRef,
-            limits: Limits::limited(u, self.config.max_init_table_size(), false)?,
+            limits:  Limits::limited(u, self.config.max_init_table_size(), false)?,
         })
     }
 
@@ -770,9 +817,12 @@ where
 
             let func_types = self.func_types.len();
             let export_types = self.auxiliary_export_types.len();
-            // If all we created were export types, it means we don't have any types for functions, so we
-            // won't create any functions.
-            assert!(func_types > export_types, "We should have created at least one type for defined functions.");
+            // If all we created were export types, it means we don't have any types for
+            // functions, so we won't create any functions.
+            assert!(
+                func_types > export_types,
+                "We should have created at least one type for defined functions."
+            );
             let max = func_types - export_types - 1;
             let ty = self.func_types[u.int_in_range(0..=max)?];
             self.funcs.push((ty, self.func_type(ty).clone()));
@@ -817,7 +867,9 @@ where
             self.config.max_memory_pages(),
             self.config.memory_max_size_required(),
         )?;
-        Ok(MemoryType { limits })
+        Ok(MemoryType {
+            limits,
+        })
     }
 
     fn arbitrary_memories(&mut self, u: &mut Unstructured) -> Result<()> {
@@ -831,7 +883,8 @@ where
                 }
                 self.num_defined_memories += 1;
                 let memory_type = self.arbitrary_memtype(u)?;
-                self.size_of_biggest_memory = max(memory_type.limits.min, self.size_of_biggest_memory);
+                self.size_of_biggest_memory =
+                    max(memory_type.limits.min, self.size_of_biggest_memory);
                 self.memories.push(memory_type);
                 Ok(true)
             },
@@ -839,38 +892,32 @@ where
     }
 
     fn arbitrary_globals(&mut self, u: &mut Unstructured) -> Result<()> {
+        arbitrary_loop(u, self.config.min_globals(), self.config.max_globals(), |u| {
+            if !self.can_add_local_or_import_global() {
+                return Ok(false);
+            }
 
-        arbitrary_loop(
-            u,
-            self.config.min_globals(),
-            self.config.max_globals(),
-            |u| {
-                if !self.can_add_local_or_import_global() {
-                    return Ok(false);
-                }
+            let ty = self.arbitrary_global_type(u)?;
 
-                let ty = self.arbitrary_global_type(u)?;
-
-                let num_funcs = self.funcs.len() as u32;
-                let expr = match ty.val_type {
-                    ValType::I32 => Instruction::I32Const(u.arbitrary()?),
-                    ValType::I64 => Instruction::I64Const(u.arbitrary()?),
-                    ValType::ExternRef => Instruction::RefNull(ValType::ExternRef),
-                    ValType::FuncRef => {
-                        if num_funcs > 0 && u.arbitrary()? {
-                            let func = u.int_in_range(0..=num_funcs - 1)?;
-                            Instruction::RefFunc(func)
-                        } else {
-                            Instruction::RefNull(ValType::FuncRef)
-                        }
+            let num_funcs = self.funcs.len() as u32;
+            let expr = match ty.val_type {
+                ValType::I32 => Instruction::I32Const(u.arbitrary()?),
+                ValType::I64 => Instruction::I64Const(u.arbitrary()?),
+                ValType::ExternRef => Instruction::RefNull(ValType::ExternRef),
+                ValType::FuncRef => {
+                    if num_funcs > 0 && u.arbitrary()? {
+                        let func = u.int_in_range(0..=num_funcs - 1)?;
+                        Instruction::RefFunc(func)
+                    } else {
+                        Instruction::RefNull(ValType::FuncRef)
                     }
-                };
-                let global_idx = self.globals.len() as u32;
-                self.globals.push(ty);
-                self.defined_globals.push((global_idx, expr));
-                Ok(true)
-            },
-        )
+                }
+            };
+            let global_idx = self.globals.len() as u32;
+            self.globals.push(ty);
+            self.defined_globals.push((global_idx, expr));
+            Ok(true)
+        })
     }
 
     fn arbitrary_exports(&mut self, u: &mut Unstructured) -> Result<()> {
@@ -880,7 +927,8 @@ where
         if self.funcs.len() > 0 && self.valid_export_types.len() > 0 {
             choices.push(|u, m| {
                 // Filtering out the indices of functions whose types allow them to be exported
-                // TODO (MRA) It's inefficient to keep iterating over every function every time we want to select an export
+                // TODO (MRA) It's inefficient to keep iterating over every function every time
+                // we want to select an export
                 let mut exportable_funcs = Vec::new();
                 for (f_idx, (t_idx, _)) in m.funcs.iter().enumerate() {
                     if m.valid_export_types.contains(t_idx) {
@@ -922,18 +970,13 @@ where
         }
 
         let mut export_names = HashSet::new();
-        arbitrary_loop(
-            u,
-            self.config.min_exports(),
-            self.config.max_exports(),
-            |u| {
-                let name = unique_string(100, &mut export_names, u)?;
-                let f = u.choose(&choices)?;
-                let export = f(u, self)?;
-                self.exports.push((name, export));
-                Ok(true)
-            },
-        )
+        arbitrary_loop(u, self.config.min_exports(), self.config.max_exports(), |u| {
+            let name = unique_string(100, &mut export_names, u)?;
+            let f = u.choose(&choices)?;
+            let export = f(u, self)?;
+            self.exports.push((name, export));
+            Ok(true)
+        })
     }
 
     fn arbitrary_start(&mut self, u: &mut Unstructured) -> Result<()> {
@@ -959,7 +1002,7 @@ where
 
     fn arbitrary_elems(&mut self, u: &mut Unstructured) -> Result<()> {
         if self.size_of_biggest_table <= 0 {
-            return Ok(())
+            return Ok(());
         }
         let func_max = self.funcs.len() as u32;
         let table_tys = self.tables.iter().map(|t| t.elem_ty).collect::<Vec<_>>();
@@ -996,61 +1039,55 @@ where
                 let offset_instr = arbitrary_offset(u)?;
                 let offset = match offset_instr {
                     Instruction::GlobalGet(_) => {
-                        assert!(self.config.allow_globalget_in_elem_and_data_offsets(), "GlobalGet instruction in table offset currently not supported");
+                        assert!(
+                            self.config.allow_globalget_in_elem_and_data_offsets(),
+                            "GlobalGet instruction in table offset currently not supported"
+                        );
                         0
-                    },
+                    }
                     Instruction::I32Const(c) => c as u32,
                     Instruction::I64Const(c) => c as u32,
-                    _ => {
-                        panic!("Unsupported instruction in table offset")
-                    },
+                    _ => panic!("Unsupported instruction in table offset"),
                 };
                 assert!(self.size_of_biggest_table >= offset);
                 let max_table_size = self.size_of_biggest_table - offset;
                 let min_elems = min(self.config.min_elements(), max_table_size as usize);
                 let max_elems = min(self.config.max_elements(), max_table_size as usize);
                 let kind = ElementKind::Active {
-                    table: None,
+                    table:  None,
                     offset: offset_instr,
                 };
                 let ty = table_tys[0];
-                let items = if ty == ValType::ExternRef
-                {
+                let items = if ty == ValType::ExternRef {
                     let mut init = vec![];
-                    arbitrary_loop(
-                        u,
-                        min_elems,
-                        max_elems,
-                        |u| {
-                            init.push(
-                                if ty == ValType::ExternRef || func_max == 0 || u.arbitrary()? {
-                                    None
-                                } else {
-                                    Some(u.int_in_range(0..=func_max - 1)?)
-                                },
-                            );
-                            Ok(true)
-                        },
-                    )?;
+                    arbitrary_loop(u, min_elems, max_elems, |u| {
+                        init.push(
+                            if ty == ValType::ExternRef || func_max == 0 || u.arbitrary()? {
+                                None
+                            } else {
+                                Some(u.int_in_range(0..=func_max - 1)?)
+                            },
+                        );
+                        Ok(true)
+                    })?;
                     Elements::Expressions(init)
                 } else {
                     let mut init = vec![];
                     if func_max > 0 {
-                        arbitrary_loop(
-                            u,
-                            min_elems,
-                            max_elems,
-                            |u| {
-                                let func_idx = u.int_in_range(0..=func_max - 1)?;
-                                init.push(func_idx);
-                                Ok(true)
-                            },
-                        )?;
+                        arbitrary_loop(u, min_elems, max_elems, |u| {
+                            let func_idx = u.int_in_range(0..=func_max - 1)?;
+                            init.push(func_idx);
+                            Ok(true)
+                        })?;
                     }
                     Elements::Functions(init)
                 };
 
-                self.elems.push(ElementSegment { kind, ty, items });
+                self.elems.push(ElementSegment {
+                    kind,
+                    ty,
+                    items,
+                });
                 Ok(true)
             },
         )
@@ -1067,16 +1104,21 @@ where
         }
         // Creating (non-arbitrary) code for auxiliary functions
         for (_, callee_func_idx, required_type_idx) in self.auxiliary_funcs.iter() {
-            let body = self.auxiliary_func_body(*callee_func_idx, self.ty(*required_type_idx), &mut allocs)?;
+            let body = self.auxiliary_func_body(
+                *callee_func_idx,
+                self.ty(*required_type_idx),
+                &mut allocs,
+            )?;
             self.code.push(body);
         }
         Ok(())
     }
 
-    fn auxiliary_func_body(&self,
-                           callee_func_idx: usize,
-                           required_type: &FuncType,
-                           allocs: &mut CodeBuilderAllocations<C>
+    fn auxiliary_func_body(
+        &self,
+        callee_func_idx: usize,
+        required_type: &FuncType,
+        allocs: &mut CodeBuilderAllocations<C>,
     ) -> Result<Code> {
         let locals = Vec::new();
         let mut builder = allocs.builder(required_type, &locals);
@@ -1121,7 +1163,7 @@ where
 
     fn arbitrary_data(&mut self, u: &mut Unstructured) -> Result<()> {
         if self.size_of_biggest_memory <= 0 {
-            return Ok(())
+            return Ok(());
         }
         // With bulk-memory we can generate passive data, otherwise if there are
         // no memories we can't generate any data.
@@ -1133,49 +1175,46 @@ where
         let mut choices: Vec<Box<dyn Fn(&mut Unstructured) -> Result<Instruction>>> = vec![];
         let mem_limit = (self.size_of_biggest_memory * PAGE_SIZE) as i32;
 
-        arbitrary_loop(
-            u,
-            self.config.min_data_segments(),
-            self.config.max_data_segments(),
-            |u| {
-                if choices.is_empty() {
-                    choices.push(Box::new(move |u| {
-                        Ok(Instruction::I32Const(u.int_in_range(0..=mem_limit)?))
-                    }));
+        arbitrary_loop(u, self.config.min_data_segments(), self.config.max_data_segments(), |u| {
+            if choices.is_empty() {
+                choices.push(Box::new(move |u| {
+                    Ok(Instruction::I32Const(u.int_in_range(0..=mem_limit)?))
+                }));
 
-                    if self.config.allow_globalget_in_elem_and_data_offsets() {
-                        for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
-                            .iter()
-                            .enumerate()
-                        {
-                            if !g.mutable && g.val_type == ValType::I32 {
-                                choices.push(Box::new(move |_| Ok(Instruction::GlobalGet(i as u32))));
-                            }
+                if self.config.allow_globalget_in_elem_and_data_offsets() {
+                    for (i, g) in self.globals[..self.globals.len() - self.defined_globals.len()]
+                        .iter()
+                        .enumerate()
+                    {
+                        if !g.mutable && g.val_type == ValType::I32 {
+                            choices.push(Box::new(move |_| Ok(Instruction::GlobalGet(i as u32))));
                         }
                     }
                 }
+            }
 
-                // Passive data can only be generated if bulk memory is enabled.
-                // Otherwise if there are no memories we *only* generate passive
-                // data. Finally if all conditions are met we use an input byte to
-                // determine if it should be passive or active.
-                let kind =
-                    if self.config.bulk_memory_enabled() && (memories == 0 || u.arbitrary()?) {
-                        DataSegmentKind::Passive
-                    } else {
-                        let f = u.choose(&choices)?;
-                        let offset = f(u)?;
-                        let memory_index = u.int_in_range(0..=memories - 1)?;
-                        DataSegmentKind::Active {
-                            offset,
-                            memory_index,
-                        }
-                    };
-                let init = u.arbitrary()?;
-                self.data.push(DataSegment { kind, init });
-                Ok(true)
-            },
-        )
+            // Passive data can only be generated if bulk memory is enabled.
+            // Otherwise if there are no memories we *only* generate passive
+            // data. Finally if all conditions are met we use an input byte to
+            // determine if it should be passive or active.
+            let kind = if self.config.bulk_memory_enabled() && (memories == 0 || u.arbitrary()?) {
+                DataSegmentKind::Passive
+            } else {
+                let f = u.choose(&choices)?;
+                let offset = f(u)?;
+                let memory_index = u.int_in_range(0..=memories - 1)?;
+                DataSegmentKind::Active {
+                    offset,
+                    memory_index,
+                }
+            };
+            let init = u.arbitrary()?;
+            self.data.push(DataSegment {
+                kind,
+                init,
+            });
+            Ok(true)
+        })
     }
 }
 

@@ -3,9 +3,7 @@ use std::convert::TryFrom;
 
 impl Module {
     /// Encode this Wasm module into bytes.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.inner.to_bytes()
-    }
+    pub fn to_bytes(&self) -> Vec<u8> { self.inner.to_bytes() }
 }
 
 impl<C> ConfiguredModule<C>
@@ -13,18 +11,17 @@ where
     C: Config,
 {
     /// Encode this Wasm module into bytes.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.encoded().finish()
-    }
+    pub fn to_bytes(&self) -> Vec<u8> { self.encoded().finish() }
 
     /// The names of functions that are exported from this module
     pub fn exports(&self) -> Vec<&String> {
-        self.exports.iter().flat_map(|(str, exp)| {
-            match exp {
+        self.exports
+            .iter()
+            .flat_map(|(str, exp)| match exp {
                 Export::Func(_) => Some(str),
-                _ => None
-            }
-        }).collect()
+                _ => None,
+            })
+            .collect()
     }
 
     fn encoded(&self) -> wasm_encoder::Module {
@@ -135,7 +132,9 @@ where
 
     fn encode_start(&self, module: &mut wasm_encoder::Module) {
         if let Some(f) = self.start {
-            module.section(&wasm_encoder::StartSection { function_index: f });
+            module.section(&wasm_encoder::StartSection {
+                function_index: f,
+            });
         }
     }
 
@@ -159,7 +158,10 @@ where
                 Elements::Functions(fs) => wasm_encoder::Elements::Functions(fs),
             };
             match &el.kind {
-                ElementKind::Active { table, offset } => {
+                ElementKind::Active {
+                    table,
+                    offset,
+                } => {
                     elems.active(*table, translate_instruction(offset), elem_ty, elements);
                 }
             }
@@ -258,7 +260,7 @@ fn translate_limits(limits: &Limits) -> wasm_encoder::Limits {
 fn translate_table_type(ty: &TableType) -> wasm_encoder::TableType {
     wasm_encoder::TableType {
         element_type: translate_val_type(ty.elem_ty),
-        limits: translate_limits(&ty.limits),
+        limits:       translate_limits(&ty.limits),
     }
 }
 
@@ -271,7 +273,7 @@ fn translate_memory_type(ty: &MemoryType) -> wasm_encoder::MemoryType {
 fn translate_global_type(ty: &GlobalType) -> wasm_encoder::GlobalType {
     wasm_encoder::GlobalType {
         val_type: translate_val_type(ty.val_type),
-        mutable: ty.mutable,
+        mutable:  ty.mutable,
     }
 }
 
@@ -285,8 +287,8 @@ fn translate_block_type(ty: BlockType) -> wasm_encoder::BlockType {
 
 fn translate_mem_arg(m: MemArg) -> wasm_encoder::MemArg {
     wasm_encoder::MemArg {
-        offset: m.offset,
-        align: m.align,
+        offset:       m.offset,
+        align:        m.align,
         memory_index: m.memory_index,
     }
 }
@@ -316,7 +318,13 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         BrTable(ref ls, l) => wasm_encoder::Instruction::BrTable(ls, l),
         Return => wasm_encoder::Instruction::Return,
         Call(x) => wasm_encoder::Instruction::Call(x),
-        CallIndirect { ty, table } => wasm_encoder::Instruction::CallIndirect { ty, table },
+        CallIndirect {
+            ty,
+            table,
+        } => wasm_encoder::Instruction::CallIndirect {
+            ty,
+            table,
+        },
 
         // Parametric instructions.
         Drop => wasm_encoder::Instruction::Drop,
@@ -351,9 +359,21 @@ fn translate_instruction(inst: &Instruction) -> wasm_encoder::Instruction {
         I64Store32(m) => wasm_encoder::Instruction::I64Store32(translate_mem_arg(m)),
         MemorySize(x) => wasm_encoder::Instruction::MemorySize(x),
         MemoryGrow(x) => wasm_encoder::Instruction::MemoryGrow(x),
-        MemoryInit { mem, data } => wasm_encoder::Instruction::MemoryInit { mem, data },
+        MemoryInit {
+            mem,
+            data,
+        } => wasm_encoder::Instruction::MemoryInit {
+            mem,
+            data,
+        },
         DataDrop(x) => wasm_encoder::Instruction::DataDrop(x),
-        MemoryCopy { src, dst } => wasm_encoder::Instruction::MemoryCopy { src, dst },
+        MemoryCopy {
+            src,
+            dst,
+        } => wasm_encoder::Instruction::MemoryCopy {
+            src,
+            dst,
+        },
         MemoryFill(x) => wasm_encoder::Instruction::MemoryFill(x),
 
         // Numeric instructions.

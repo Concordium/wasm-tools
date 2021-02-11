@@ -5,10 +5,7 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{
-///     DataSection, Instruction, Limits, MemorySection, MemoryType,
-///     Module,
-/// };
+/// use wasm_encoder::{DataSection, Instruction, Limits, MemorySection, MemoryType, Module};
 ///
 /// let mut memory = MemorySection::new();
 /// memory.memory(MemoryType {
@@ -25,14 +22,12 @@ use super::*;
 /// data.active(memory_index, offset, segment_data.iter().copied());
 ///
 /// let mut module = Module::new();
-/// module
-///     .section(&memory)
-///     .section(&data);
+/// module.section(&memory).section(&data);
 ///
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct DataSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -63,7 +58,7 @@ impl DataSection {
     /// Create a new data section encoder.
     pub fn new() -> DataSection {
         DataSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -72,8 +67,7 @@ impl DataSection {
     pub fn segment<D>(&mut self, segment: DataSegment<D>) -> &mut Self
     where
         D: IntoIterator<Item = u8>,
-        D::IntoIter: ExactSizeIterator,
-    {
+        D::IntoIter: ExactSizeIterator, {
         match segment.mode {
             DataSegmentMode::Passive => {
                 self.bytes.push(0x01);
@@ -98,8 +92,7 @@ impl DataSection {
         }
 
         let data = segment.data.into_iter();
-        self.bytes
-            .extend(encoders::u32(u32::try_from(data.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(data.len()).unwrap()));
         self.bytes.extend(data);
 
         self.num_added += 1;
@@ -115,8 +108,7 @@ impl DataSection {
     ) -> &mut Self
     where
         D: IntoIterator<Item = u8>,
-        D::IntoIter: ExactSizeIterator,
-    {
+        D::IntoIter: ExactSizeIterator, {
         self.segment(DataSegment {
             mode: DataSegmentMode::Active {
                 memory_index,
@@ -132,8 +124,7 @@ impl DataSection {
     pub fn passive<'a, D>(&mut self, data: D) -> &mut Self
     where
         D: IntoIterator<Item = u8>,
-        D::IntoIter: ExactSizeIterator,
-    {
+        D::IntoIter: ExactSizeIterator, {
         self.segment(DataSegment {
             mode: DataSegmentMode::Passive,
             data,
@@ -142,14 +133,11 @@ impl DataSection {
 }
 
 impl Section for DataSection {
-    fn id(&self) -> u8 {
-        SectionId::Data.into()
-    }
+    fn id(&self) -> u8 { SectionId::Data.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(
@@ -167,14 +155,11 @@ pub struct DataCountSection {
 }
 
 impl Section for DataCountSection {
-    fn id(&self) -> u8 {
-        SectionId::DataCount.into()
-    }
+    fn id(&self) -> u8 { SectionId::DataCount.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let count = encoders::u32(self.count);
         let n = count.len();
         sink.extend(encoders::u32(u32::try_from(n).unwrap()).chain(count));

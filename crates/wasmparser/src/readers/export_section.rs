@@ -21,30 +21,29 @@ use super::{
 #[derive(Debug, Copy, Clone)]
 pub struct Export<'a> {
     pub field: &'a str,
-    pub kind: ExternalKind,
+    pub kind:  ExternalKind,
     pub index: u32,
 }
 
 #[derive(Clone)]
 pub struct ExportSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> ExportSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<ExportSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(ExportSectionReader { reader, count })
+        Ok(ExportSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the export section.
     ///
@@ -61,42 +60,37 @@ impl<'a> ExportSectionReader<'a> {
     /// ```
     pub fn read<'b>(&mut self) -> Result<Export<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let field = self.reader.read_string()?;
         let kind = self.reader.read_external_kind()?;
         let index = self.reader.read_var_u32()?;
-        Ok(Export { field, kind, index })
+        Ok(Export {
+            field,
+            kind,
+            index,
+        })
     }
 }
 
 impl<'a> SectionReader for ExportSectionReader<'a> {
     type Item = Export<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        ExportSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        ExportSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { ExportSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { ExportSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for ExportSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        ExportSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { ExportSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for ExportSectionReader<'a> {
-    type Item = Result<Export<'a>>;
     type IntoIter = SectionIteratorLimited<ExportSectionReader<'a>>;
+    type Item = Result<Export<'a>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

@@ -1,5 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::rc::Rc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    rc::Rc,
+};
 
 use arbitrary::{Result, Unstructured};
 
@@ -178,8 +180,7 @@ instructions! {
 
 pub(crate) struct CodeBuilderAllocations<C>
 where
-    C: Config,
-{
+    C: Config, {
     // The control labels in scope right now.
     controls: Vec<Control>,
 
@@ -208,11 +209,10 @@ where
 
 pub(crate) struct CodeBuilder<'a, C>
 where
-    C: Config,
-{
+    C: Config, {
     func_ty: &'a FuncType,
-    locals: &'a Vec<ValType>,
-    allocs: &'a mut CodeBuilderAllocations<C>,
+    locals:  &'a Vec<ValType>,
+    allocs:  &'a mut CodeBuilderAllocations<C>,
 }
 
 /// A control frame.
@@ -253,19 +253,13 @@ where
         let mut mutable_globals = BTreeMap::new();
         for (i, global) in module.globals.iter().enumerate() {
             if global.mutable {
-                mutable_globals
-                    .entry(global.val_type)
-                    .or_insert(Vec::new())
-                    .push(i as u32);
+                mutable_globals.entry(global.val_type).or_insert(Vec::new()).push(i as u32);
             }
         }
 
         let mut functions = BTreeMap::new();
         for (idx, func) in module.funcs() {
-            functions
-                .entry(func.params.clone())
-                .or_insert(Vec::new())
-                .push(idx);
+            functions.entry(func.params.clone()).or_insert(Vec::new()).push(idx);
         }
 
         let mut funcref_tables = Vec::new();
@@ -312,10 +306,10 @@ where
     ) -> CodeBuilder<'a, C> {
         self.controls.clear();
         self.controls.push(Control {
-            kind: ControlKind::Block,
-            params: vec![],
+            kind:    ControlKind::Block,
+            params:  vec![],
             results: func_ty.result.into_iter().collect(),
-            height: 0,
+            height:  0,
         });
 
         self.operands.clear();
@@ -341,15 +335,11 @@ where
 
     fn pop_operands(&mut self, to_pop: &[ValType]) {
         debug_assert!(self.types_on_stack(to_pop));
-        self.allocs
-            .operands
-            .truncate(self.allocs.operands.len() - to_pop.len());
+        self.allocs.operands.truncate(self.allocs.operands.len() - to_pop.len());
     }
 
     fn push_operands(&mut self, to_push: &[ValType]) {
-        self.allocs
-            .operands
-            .extend(to_push.iter().copied().map(Some));
+        self.allocs.operands.extend(to_push.iter().copied().map(Some));
     }
 
     fn label_types_on_stack(&self, to_check: &Control) -> bool {
@@ -366,15 +356,10 @@ where
 
     fn types_on_stack(&self, types: &[ValType]) -> bool {
         self.operands().len() >= types.len()
-            && self
-                .operands()
-                .iter()
-                .rev()
-                .zip(types.iter().rev())
-                .all(|(a, b)| match (a, b) {
-                    (None, _) => true,
-                    (Some(x), y) => x == y,
-                })
+            && self.operands().iter().rev().zip(types.iter().rev()).all(|(a, b)| match (a, b) {
+                (None, _) => true,
+                (Some(x), y) => x == y,
+            })
     }
 
     #[inline(never)]
@@ -438,15 +423,15 @@ where
             instructions.push(Instruction::Drop);
         }
         match self.func_ty.result {
-            Some(res) =>
-                self.generate_operand_of_type(&mut instructions, &res),
-            _ => ()
+            Some(res) => self.generate_operand_of_type(&mut instructions, &res),
+            _ => (),
         }
         Ok(instructions)
     }
 
     fn generate_operand_of_type(&self, instructions: &mut Vec<Instruction>, param_type: &ValType) {
-        match param_type { // TODO (MRA) Arbitrary arguments?
+        match param_type {
+            // TODO (MRA) Arbitrary arguments?
             ValType::I32 => {
                 instructions.push(Instruction::I32Const(0));
             }
@@ -488,9 +473,7 @@ where
             }
 
             self.allocs.operands.truncate(label.height);
-            self.allocs
-                .operands
-                .extend(label.results.into_iter().map(Some));
+            self.allocs.operands.extend(label.results.into_iter().map(Some));
         }
     }
 }
@@ -618,11 +601,7 @@ fn end<C: Config>(
 
 #[inline]
 fn br_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    builder
-        .allocs
-        .controls
-        .iter()
-        .any(|l| builder.label_types_on_stack(l))
+    builder.allocs.controls.iter().any(|l| builder.label_types_on_stack(l))
 }
 
 fn br<C: Config>(
@@ -630,12 +609,7 @@ fn br<C: Config>(
     _: &ConfiguredModule<C>,
     builder: &mut CodeBuilder<C>,
 ) -> Result<Instruction> {
-    let n = builder
-        .allocs
-        .controls
-        .iter()
-        .filter(|l| builder.label_types_on_stack(l))
-        .count();
+    let n = builder.allocs.controls.iter().filter(|l| builder.label_types_on_stack(l)).count();
     debug_assert!(n > 0);
     let i = u.int_in_range(0..=n - 1)?;
     let (target, _) = builder
@@ -659,11 +633,7 @@ fn br_if_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>)
         return false;
     }
     let ty = builder.allocs.operands.pop().unwrap();
-    let is_valid = builder
-        .allocs
-        .controls
-        .iter()
-        .any(|l| builder.label_types_on_stack(l));
+    let is_valid = builder.allocs.controls.iter().any(|l| builder.label_types_on_stack(l));
     builder.allocs.operands.push(ty);
     is_valid
 }
@@ -675,12 +645,7 @@ fn br_if<C: Config>(
 ) -> Result<Instruction> {
     builder.pop_operands(&[ValType::I32]);
 
-    let n = builder
-        .allocs
-        .controls
-        .iter()
-        .filter(|l| builder.label_types_on_stack(l))
-        .count();
+    let n = builder.allocs.controls.iter().filter(|l| builder.label_types_on_stack(l)).count();
     debug_assert!(n > 0);
     let i = u.int_in_range(0..=n - 1)?;
     let (target, _) = builder
@@ -713,12 +678,7 @@ fn br_table<C: Config>(
 ) -> Result<Instruction> {
     builder.pop_operands(&[ValType::I32]);
 
-    let n = builder
-        .allocs
-        .controls
-        .iter()
-        .filter(|l| builder.label_types_on_stack(l))
-        .count();
+    let n = builder.allocs.controls.iter().filter(|l| builder.label_types_on_stack(l)).count();
     debug_assert!(n > 0);
 
     let i = u.int_in_range(0..=n - 1)?;
@@ -766,11 +726,7 @@ fn r#return<C: Config>(
 
 #[inline]
 fn call_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    builder
-        .allocs
-        .functions
-        .keys()
-        .any(|k| builder.types_on_stack(k))
+    builder.allocs.functions.keys().any(|k| builder.types_on_stack(k))
 }
 
 fn call<C: Config>(
@@ -809,9 +765,7 @@ fn call_indirect_valid<C: Config>(
         return false;
     }
     let ty = builder.allocs.operands.pop().unwrap();
-    let is_valid = module
-        .func_types()
-        .any(|(_, ty)| builder.types_on_stack(&ty.params));
+    let is_valid = module.func_types().any(|(_, ty)| builder.types_on_stack(&ty.params));
     builder.allocs.operands.push(ty);
     is_valid
 }
@@ -832,10 +786,10 @@ fn call_indirect<C: Config>(
     match ty.result {
         Some(t) => {
             builder.push_operands(&[t]);
-        },
+        }
         None => {
             builder.push_operands(&[]);
-        },
+        }
     }
     let table = *u.choose(&builder.allocs.funcref_tables)?;
     Ok(Instruction::CallIndirect {
@@ -882,8 +836,7 @@ fn select<C: Config>(
         Some(ty @ ValType::ExternRef) | Some(ty @ ValType::FuncRef) => {
             Ok(Instruction::TypedSelect(ty))
         }
-        Some(ValType::I32) | Some(ValType::I64)
-        | None => Ok(Instruction::Select),
+        Some(ValType::I32) | Some(ValType::I64) | None => Ok(Instruction::Select),
     }
 }
 
@@ -901,22 +854,19 @@ fn local_get<C: Config>(
     let n = num_params + builder.locals.len();
     debug_assert!(n > 0);
     let i = u.int_in_range(0..=n - 1)?;
-    builder.allocs.operands.push(Some(if i < num_params {
-        builder.func_ty.params[i]
-    } else {
-        builder.locals[i - num_params]
-    }));
+    builder.allocs.operands.push(Some(
+        if i < num_params {
+            builder.func_ty.params[i]
+        } else {
+            builder.locals[i - num_params]
+        },
+    ));
     Ok(Instruction::LocalGet(i as u32))
 }
 
 #[inline]
 fn local_set_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    builder
-        .func_ty
-        .params
-        .iter()
-        .chain(builder.locals)
-        .any(|ty| builder.type_on_stack(*ty))
+    builder.func_ty.params.iter().chain(builder.locals).any(|ty| builder.type_on_stack(*ty))
 }
 
 fn local_set<C: Config>(
@@ -984,20 +934,13 @@ fn global_get<C: Config>(
 ) -> Result<Instruction> {
     debug_assert!(module.globals.len() > 0);
     let global_idx = u.int_in_range(0..=module.globals.len() - 1)?;
-    builder
-        .allocs
-        .operands
-        .push(Some(module.globals[global_idx].val_type));
+    builder.allocs.operands.push(Some(module.globals[global_idx].val_type));
     Ok(Instruction::GlobalGet(global_idx as u32))
 }
 
 #[inline]
 fn global_set_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
-    builder
-        .allocs
-        .mutable_globals
-        .iter()
-        .any(|(ty, _)| builder.type_on_stack(*ty))
+    builder.allocs.mutable_globals.iter().any(|(ty, _)| builder.type_on_stack(*ty))
 }
 
 fn global_set<C: Config>(
@@ -1283,7 +1226,10 @@ fn memory_init<C: Config>(
     let mem = memory_index(u, module)?;
     let data = data_index(u, module)?;
     builder.pop_operands(&[ValType::I32, ValType::I32, ValType::I32]);
-    Ok(Instruction::MemoryInit { mem, data })
+    Ok(Instruction::MemoryInit {
+        mem,
+        data,
+    })
 }
 
 #[inline]
@@ -1322,7 +1268,10 @@ fn memory_copy<C: Config>(
     let src = memory_index(u, module)?;
     let dst = memory_index(u, module)?;
     builder.pop_operands(&[ValType::I32, ValType::I32, ValType::I32]);
-    Ok(Instruction::MemoryCopy { dst, src })
+    Ok(Instruction::MemoryCopy {
+        dst,
+        src,
+    })
 }
 
 #[inline]
@@ -1998,10 +1947,7 @@ fn memory_offset<C: Config>(
 
     let memory_type = &module.memories[memory_index as usize];
     let min = memory_type.limits.min.saturating_mul(65536);
-    let max = memory_type
-        .limits
-        .max
-        .map_or(u32::MAX, |max| max.saturating_mul(65536));
+    let max = memory_type.limits.max.map_or(u32::MAX, |max| max.saturating_mul(65536));
 
     let choice = u.int_in_range(0..=a + b + c - 1)?;
     if choice < a {

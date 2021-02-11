@@ -1,8 +1,10 @@
 use arbitrary::Arbitrary;
-use std::fs;
-use std::io::{stdin, stdout, Read, Write};
-use std::path::PathBuf;
-use std::process;
+use std::{
+    fs,
+    io::{stdin, stdout, Read, Write},
+    path::PathBuf,
+    process,
+};
 use structopt::StructOpt;
 use wasm_smith::Module;
 
@@ -31,7 +33,7 @@ use wasm_smith::Module;
 /// * 1: An unexpected failure occurred.
 ///
 /// * 2: Failed to generate a Webassembly module from the input seed. (Happens
-///      rarely; try again with a new input.)
+///   rarely; try again with a new input.)
 #[derive(StructOpt)]
 struct Options {
     /// The arbitrary input seed.

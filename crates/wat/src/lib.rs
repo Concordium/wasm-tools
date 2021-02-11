@@ -67,10 +67,7 @@
 
 #![deny(missing_docs)]
 
-use std::borrow::Cow;
-use std::fmt;
-use std::path::Path;
-use std::str;
+use std::{borrow::Cow, fmt, path::Path, str};
 use wast::parser::{self, ParseBuffer};
 
 /// Parses a file on disk as a [WebAssembly Text format][wat] file, or a binary
@@ -95,9 +92,7 @@ use wast::parser::{self, ParseBuffer};
 /// ```
 ///
 /// [wat]: http://webassembly.github.io/spec/core/text/index.html
-pub fn parse_file(file: impl AsRef<Path>) -> Result<Vec<u8>> {
-    _parse_file(file.as_ref())
-}
+pub fn parse_file(file: impl AsRef<Path>) -> Result<Vec<u8>> { _parse_file(file.as_ref()) }
 
 fn _parse_file(file: &Path) -> Result<Vec<u8>> {
     let contents = std::fs::read(file).map_err(|err| Error {
@@ -210,9 +205,7 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<Cow<'_, [u8]>> {
 /// ```
 ///
 /// [wat]: http://webassembly.github.io/spec/core/text/index.html
-pub fn parse_str(wat: impl AsRef<str>) -> Result<Vec<u8>> {
-    _parse_str(wat.as_ref())
-}
+pub fn parse_str(wat: impl AsRef<str>) -> Result<Vec<u8>> { _parse_str(wat.as_ref()) }
 
 fn _parse_str(wat: &str) -> Result<Vec<u8>> {
     let buf = ParseBuffer::new(&wat).map_err(|e| Error::cvt(e, wat))?;
@@ -240,7 +233,10 @@ pub struct Error {
 #[derive(Debug)]
 enum ErrorKind {
     Wast(wast::Error),
-    Io { err: std::io::Error, msg: String },
+    Io {
+        err: std::io::Error,
+        msg: String,
+    },
     Custom(String),
 }
 
@@ -259,7 +255,10 @@ impl fmt::Display for Error {
         match &*self.kind {
             ErrorKind::Wast(err) => err.fmt(f),
             ErrorKind::Custom(err) => err.fmt(f),
-            ErrorKind::Io { msg, .. } => msg.fmt(f),
+            ErrorKind::Io {
+                msg,
+                ..
+            } => msg.fmt(f),
         }
     }
 }
@@ -269,7 +268,10 @@ impl std::error::Error for Error {
         match &*self.kind {
             ErrorKind::Wast(_) => None,
             ErrorKind::Custom(_) => None,
-            ErrorKind::Io { err, .. } => Some(err),
+            ErrorKind::Io {
+                err,
+                ..
+            } => Some(err),
         }
     }
 }

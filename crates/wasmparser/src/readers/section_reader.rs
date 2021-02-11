@@ -38,10 +38,9 @@ pub trait SectionWithLimitedItems {
 
 pub struct SectionIterator<R>
 where
-    R: SectionReader,
-{
+    R: SectionReader, {
     reader: R,
-    err: bool,
+    err:    bool,
 }
 
 impl<R> SectionIterator<R>
@@ -49,7 +48,10 @@ where
     R: SectionReader,
 {
     pub fn new(reader: R) -> SectionIterator<R> {
-        SectionIterator { reader, err: false }
+        SectionIterator {
+            reader,
+            err: false,
+        }
     }
 }
 
@@ -71,11 +73,10 @@ where
 
 pub struct SectionIteratorLimited<R>
 where
-    R: SectionReader + SectionWithLimitedItems,
-{
+    R: SectionReader + SectionWithLimitedItems, {
     reader: R,
-    left: u32,
-    end: bool,
+    left:   u32,
+    end:    bool,
 }
 
 impl<R> SectionIteratorLimited<R>

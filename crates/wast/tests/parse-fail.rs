@@ -5,8 +5,10 @@
 //! look at the diff!
 
 use rayon::prelude::*;
-use std::env;
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 fn main() {
     let mut tests = Vec::new();
@@ -30,10 +32,8 @@ fn main() {
 
     println!("running {} tests\n", tests.len());
 
-    let errors = tests
-        .par_iter()
-        .filter_map(|test| run_test(test, bless).err())
-        .collect::<Vec<_>>();
+    let errors =
+        tests.par_iter().filter_map(|test| run_test(test, bless).err()).collect::<Vec<_>>();
 
     if !errors.is_empty() {
         for msg in errors.iter() {
@@ -58,9 +58,7 @@ fn run_test(test: &Path, bless: bool) -> anyhow::Result<()> {
     }
 
     // Ignore CRLF line ending and force always `\n`
-    let assert = std::fs::read_to_string(assert)
-        .unwrap_or(String::new())
-        .replace("\r\n", "\n");
+    let assert = std::fs::read_to_string(assert).unwrap_or(String::new()).replace("\r\n", "\n");
 
     // Compare normalize verisons which handles weirdness like path differences
     if normalize(&assert) == normalize(&err) {
@@ -73,13 +71,9 @@ fn run_test(test: &Path, bless: bool) -> anyhow::Result<()> {
         tab(&err),
     );
 
-    fn normalize(s: &str) -> String {
-        s.replace("\\", "/")
-    }
+    fn normalize(s: &str) -> String { s.replace("\\", "/") }
 
-    fn tab(s: &str) -> String {
-        s.replace("\n", "\n\t")
-    }
+    fn tab(s: &str) -> String { s.replace("\n", "\n\t") }
 }
 
 fn find_tests(path: &Path, tests: &mut Vec<PathBuf>) {

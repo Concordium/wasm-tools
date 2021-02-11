@@ -21,23 +21,22 @@ use super::{
 #[derive(Clone)]
 pub struct MemorySectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> MemorySectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<MemorySectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(MemorySectionReader { reader, count })
+        Ok(MemorySectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the memory section.
     ///
@@ -51,38 +50,28 @@ impl<'a> MemorySectionReader<'a> {
     ///     println!("Memory: {:?}", memory);
     /// }
     /// ```
-    pub fn read(&mut self) -> Result<MemoryType> {
-        self.reader.read_memory_type()
-    }
+    pub fn read(&mut self) -> Result<MemoryType> { self.reader.read_memory_type() }
 }
 
 impl<'a> SectionReader for MemorySectionReader<'a> {
     type Item = MemoryType;
-    fn read(&mut self) -> Result<Self::Item> {
-        MemorySectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        MemorySectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { MemorySectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { MemorySectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for MemorySectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        MemorySectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { MemorySectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for MemorySectionReader<'a> {
-    type Item = Result<MemoryType>;
     type IntoIter = SectionIteratorLimited<MemorySectionReader<'a>>;
+    type Item = Result<MemoryType>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

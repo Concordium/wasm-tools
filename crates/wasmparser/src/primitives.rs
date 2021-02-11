@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-use std::error::Error;
-use std::fmt;
-use std::result;
+use std::{error::Error, fmt, result};
 
 #[derive(Debug, Clone)]
 pub struct BinaryReaderError {
@@ -27,8 +25,8 @@ pub struct BinaryReaderError {
 
 #[derive(Debug, Clone)]
 pub(crate) struct BinaryReaderErrorInner {
-    pub(crate) message: String,
-    pub(crate) offset: usize,
+    pub(crate) message:     String,
+    pub(crate) offset:      usize,
     pub(crate) needed_hint: Option<usize>,
 }
 
@@ -38,11 +36,7 @@ impl Error for BinaryReaderError {}
 
 impl fmt::Display for BinaryReaderError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} (at offset {})",
-            self.inner.message, self.inner.offset
-        )
+        write!(f, "{} (at offset {})", self.inner.message, self.inner.offset)
     }
 }
 
@@ -69,14 +63,10 @@ impl BinaryReaderError {
     }
 
     /// Get this error's message.
-    pub fn message(&self) -> &str {
-        &self.inner.message
-    }
+    pub fn message(&self) -> &str { &self.inner.message }
 
     /// Get the offset within the Wasm binary where the error occured.
-    pub fn offset(&self) -> usize {
-        self.inner.offset
-    }
+    pub fn offset(&self) -> usize { self.inner.offset }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -171,7 +161,7 @@ pub enum TypeDef<'a> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct FuncType {
-    pub params: Box<[Type]>,
+    pub params:  Box<[Type]>,
     pub returns: Box<[Type]>,
 }
 
@@ -189,7 +179,7 @@ pub struct ModuleType<'a> {
 #[derive(Debug, Clone)]
 pub struct ExportType<'a> {
     pub name: &'a str,
-    pub ty: ImportSectionEntryType,
+    pub ty:   ImportSectionEntryType,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -207,7 +197,7 @@ pub struct ResizableLimits64 {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TableType {
     pub element_type: Type,
-    pub limits: ResizableLimits,
+    pub limits:       ResizableLimits,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -230,8 +220,12 @@ pub struct EventType {
 impl MemoryType {
     pub fn index_type(&self) -> Type {
         match self {
-            MemoryType::M32 { .. } => Type::I32,
-            MemoryType::M64 { .. } => Type::I64,
+            MemoryType::M32 {
+                ..
+            } => Type::I32,
+            MemoryType::M64 {
+                ..
+            } => Type::I64,
         }
     }
 }
@@ -239,7 +233,7 @@ impl MemoryType {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct GlobalType {
     pub content_type: Type,
-    pub mutable: bool,
+    pub mutable:      bool,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -264,7 +258,7 @@ pub struct MemoryImmediate {
 #[derive(Debug, Copy, Clone)]
 pub struct Naming<'a> {
     pub index: u32,
-    pub name: &'a str,
+    pub name:  &'a str,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -295,7 +289,7 @@ pub enum RelocType {
 #[derive(Clone)]
 pub struct BrTable<'a> {
     pub(crate) reader: crate::BinaryReader<'a>,
-    pub(crate) cnt: usize,
+    pub(crate) cnt:    usize,
 }
 
 /// An IEEE binary32 immediate floating point value, represented as a u32
@@ -306,9 +300,7 @@ pub struct BrTable<'a> {
 pub struct Ieee32(pub(crate) u32);
 
 impl Ieee32 {
-    pub fn bits(self) -> u32 {
-        self.0
-    }
+    pub fn bits(self) -> u32 { self.0 }
 }
 
 /// An IEEE binary64 immediate floating point value, represented as a u64
@@ -319,18 +311,14 @@ impl Ieee32 {
 pub struct Ieee64(pub(crate) u64);
 
 impl Ieee64 {
-    pub fn bits(self) -> u64 {
-        self.0
-    }
+    pub fn bits(self) -> u64 { self.0 }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct V128(pub(crate) [u8; 16]);
 
 impl V128 {
-    pub fn bytes(&self) -> &[u8; 16] {
-        &self.0
-    }
+    pub fn bytes(&self) -> &[u8; 16] { &self.0 }
 }
 
 pub type SIMDLaneIndex = u8;
@@ -380,14 +368,14 @@ pub enum Operator<'a> {
         function_index: u32,
     },
     CallIndirect {
-        index: u32,
+        index:       u32,
         table_index: u32,
     },
     ReturnCall {
         function_index: u32,
     },
     ReturnCallIndirect {
-        index: u32,
+        index:       u32,
         table_index: u32,
     },
     Drop,
@@ -480,11 +468,11 @@ pub enum Operator<'a> {
         memarg: MemoryImmediate,
     },
     MemorySize {
-        mem: u32,
+        mem:      u32,
         mem_byte: u8,
     },
     MemoryGrow {
-        mem: u32,
+        mem:      u32,
         mem_byte: u8,
     },
     I32Const {
@@ -650,7 +638,7 @@ pub enum Operator<'a> {
     // bulk memory https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md
     MemoryInit {
         segment: u32,
-        mem: u32,
+        mem:     u32,
     },
     DataDrop {
         segment: u32,
@@ -664,7 +652,7 @@ pub enum Operator<'a> {
     },
     TableInit {
         segment: u32,
-        table: u32,
+        table:   u32,
     },
     ElemDrop {
         segment: u32,
@@ -1163,35 +1151,35 @@ pub enum Operator<'a> {
     },
     V128Load8Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Load16Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Load32Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Load64Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Store8Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Store16Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Store32Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     V128Store64Lane {
         memarg: MemoryImmediate,
-        lane: SIMDLaneIndex,
+        lane:   SIMDLaneIndex,
     },
     I8x16RoundingAverageU,
     I16x8RoundingAverageU,

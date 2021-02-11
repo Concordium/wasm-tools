@@ -3,9 +3,10 @@ extern crate criterion;
 
 use anyhow::Result;
 use criterion::Criterion;
-use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use wasmparser::{DataKind, ElementKind, Parser, Payload, Validator, WasmFeatures};
 
 /// A benchmark input.
@@ -26,10 +27,12 @@ impl BenchmarkInput {
     }
 }
 
-/// Returns a vector of all found benchmark input files under the given directory.
+/// Returns a vector of all found benchmark input files under the given
+/// directory.
 ///
 /// Benchmark input files can be `.wat` or `.wast` formatted files.
-/// For `.wast` files we pull out all the module directives and run them in the benchmarks.
+/// For `.wast` files we pull out all the module directives and run them in the
+/// benchmarks.
 fn collect_test_files(path: &Path, list: &mut Vec<BenchmarkInput>) -> Result<()> {
     for entry in path.read_dir()? {
         let entry = entry?;
@@ -76,8 +79,8 @@ fn collect_test_files(path: &Path, list: &mut Vec<BenchmarkInput>) -> Result<()>
 
 /// Reads the input given the Wasm parser or validator.
 ///
-/// The `path` specifies which benchmark input file we are currently operating on
-/// so that we can report better errors in case of failures.
+/// The `path` specifies which benchmark input file we are currently operating
+/// on so that we can report better errors in case of failures.
 fn read_all_wasm(wasm: &[u8]) -> Result<()> {
     use Payload::*;
     for item in Parser::new(0).parse_all(wasm) {
@@ -139,7 +142,11 @@ fn read_all_wasm(wasm: &[u8]) -> Result<()> {
             ElementSection(s) => {
                 for item in s {
                     let item = item?;
-                    if let ElementKind::Active { init_expr, .. } = item.kind {
+                    if let ElementKind::Active {
+                        init_expr,
+                        ..
+                    } = item.kind
+                    {
                         for op in init_expr.get_operators_reader() {
                             op?;
                         }
@@ -152,7 +159,11 @@ fn read_all_wasm(wasm: &[u8]) -> Result<()> {
             DataSection(s) => {
                 for item in s {
                     let item = item?;
-                    if let DataKind::Active { init_expr, .. } = item.kind {
+                    if let DataKind::Active {
+                        init_expr,
+                        ..
+                    } = item.kind
+                    {
                         for op in init_expr.get_operators_reader() {
                             op?;
                         }
@@ -168,14 +179,30 @@ fn read_all_wasm(wasm: &[u8]) -> Result<()> {
                 }
             }
 
-            Version { .. }
-            | StartSection { .. }
-            | DataCountSection { .. }
-            | UnknownSection { .. }
-            | CustomSection { .. }
-            | CodeSectionStart { .. }
-            | ModuleSectionStart { .. }
-            | ModuleSectionEntry { .. }
+            Version {
+                ..
+            }
+            | StartSection {
+                ..
+            }
+            | DataCountSection {
+                ..
+            }
+            | UnknownSection {
+                ..
+            }
+            | CustomSection {
+                ..
+            }
+            | CodeSectionStart {
+                ..
+            }
+            | ModuleSectionStart {
+                ..
+            }
+            | ModuleSectionEntry {
+                ..
+            }
             | End => {}
         }
     }
@@ -207,16 +234,16 @@ fn validate_benchmark(c: &mut Criterion) {
     fn validator() -> Validator {
         let mut ret = Validator::new();
         ret.wasm_features(WasmFeatures {
-            reference_types: true,
-            multi_value: true,
-            simd: true,
-            exceptions: true,
-            module_linking: true,
-            bulk_memory: true,
-            threads: true,
-            tail_call: true,
-            multi_memory: true,
-            memory64: true,
+            reference_types:    true,
+            multi_value:        true,
+            simd:               true,
+            exceptions:         true,
+            module_linking:     true,
+            bulk_memory:        true,
+            threads:            true,
+            tail_call:          true,
+            multi_memory:       true,
+            memory64:           true,
             deterministic_only: false,
         });
         return ret;

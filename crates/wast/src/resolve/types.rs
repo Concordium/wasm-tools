@@ -1,5 +1,4 @@
-use crate::ast::*;
-use crate::resolve::gensym;
+use crate::{ast::*, resolve::gensym};
 use std::collections::HashMap;
 
 pub fn expand<'a>(fields: &mut Vec<ModuleField<'a>>) {
@@ -15,9 +14,9 @@ struct Expander<'a> {
     // Maps used to "intern" types. These maps are populated as type annotations
     // are seen and inline type annotations use previously defined ones if
     // there's a match.
-    func_type_to_idx: HashMap<FuncKey<'a>, Index<'a>>,
+    func_type_to_idx:     HashMap<FuncKey<'a>, Index<'a>>,
     instance_type_to_idx: HashMap<InstanceKey<'a>, Index<'a>>,
-    module_type_to_idx: HashMap<ModuleKey<'a>, Index<'a>>,
+    module_type_to_idx:   HashMap<ModuleKey<'a>, Index<'a>>,
 
     /// Fields, during processing, which should be prepended to the
     /// currently-being-processed field. This should always be empty after
@@ -106,7 +105,11 @@ impl<'a> Expander<'a> {
             }
             ModuleField::Func(f) => {
                 self.expand_type_use(&mut f.ty);
-                if let FuncKind::Inline { expression, .. } = &mut f.kind {
+                if let FuncKind::Inline {
+                    expression,
+                    ..
+                } = &mut f.kind
+                {
                     self.expand_expression(expression);
                 }
             }
@@ -116,12 +119,20 @@ impl<'a> Expander<'a> {
                 }
             }
             ModuleField::Data(d) => {
-                if let DataKind::Active { offset, .. } = &mut d.kind {
+                if let DataKind::Active {
+                    offset,
+                    ..
+                } = &mut d.kind
+                {
                     self.expand_expression(offset);
                 }
             }
             ModuleField::Elem(e) => {
-                if let ElemKind::Active { offset, .. } = &mut e.kind {
+                if let ElemKind::Active {
+                    offset,
+                    ..
+                } = &mut e.kind
+                {
                     self.expand_expression(offset);
                 }
             }
@@ -131,7 +142,10 @@ impl<'a> Expander<'a> {
                 }
             },
             ModuleField::NestedModule(m) => {
-                if let NestedModuleKind::Inline { fields } = &mut m.kind {
+                if let NestedModuleKind::Inline {
+                    fields,
+                } = &mut m.kind
+                {
                     Expander::default().process(fields);
                 }
             }
@@ -174,7 +188,10 @@ impl<'a> Expander<'a> {
             Instruction::Block(bt)
             | Instruction::If(bt)
             | Instruction::Loop(bt)
-            | Instruction::Let(LetType { block: bt, .. })
+            | Instruction::Let(LetType {
+                block: bt,
+                ..
+            })
             | Instruction::Try(bt) => {
                 // No expansion necessary, a type reference is already here.
                 // We'll verify that it's the same as the inline type, if any,
@@ -220,15 +237,20 @@ impl<'a> Expander<'a> {
 
     fn expand_type_use<T>(&mut self, item: &mut TypeUse<'a, T>) -> Index<'a>
     where
-        T: TypeReference<'a>,
-    {
+        T: TypeReference<'a>, {
         if let Some(idx) = &item.index {
             match idx {
-                ItemRef::Item { idx, exports, .. } => {
+                ItemRef::Item {
+                    idx,
+                    exports,
+                    ..
+                } => {
                     debug_assert!(exports.len() == 0);
                     return idx.clone();
                 }
-                ItemRef::Outer { .. } => unreachable!(),
+                ItemRef::Outer {
+                    ..
+                } => unreachable!(),
             }
         }
         let key = match item.inline.as_mut() {
@@ -302,7 +324,7 @@ impl<'a> TypeKey<'a> for FuncKey<'a> {
 
     fn to_def(&self, _span: Span) -> TypeDef<'a> {
         TypeDef::Func(FunctionType {
-            params: self.0.iter().map(|t| (None, None, *t)).collect(),
+            params:  self.0.iter().map(|t| (None, None, *t)).collect(),
             results: self.1.clone(),
         })
     }
@@ -319,10 +341,7 @@ impl<'a> TypeReference<'a> for InstanceType<'a> {
     type Key = InstanceKey<'a>;
 
     fn key(&self) -> Self::Key {
-        self.exports
-            .iter()
-            .map(|export| (export.name, Item::new(&export.item)))
-            .collect()
+        self.exports.iter().map(|export| (export.name, Item::new(&export.item))).collect()
     }
 
     fn expand(&mut self, cx: &mut Expander<'a>) {
@@ -346,7 +365,9 @@ impl<'a> TypeKey<'a> for InstanceKey<'a> {
                 item: item.to_sig(span),
             })
             .collect();
-        TypeDef::Instance(InstanceType { exports })
+        TypeDef::Instance(InstanceType {
+            exports,
+        })
     }
 
     fn insert(&self, cx: &mut Expander<'a>, idx: Index<'a>) {
@@ -356,10 +377,7 @@ impl<'a> TypeKey<'a> for InstanceKey<'a> {
 
 // The first element of this pair is the list of imports in the module, and the
 // second element is the list of exports.
-type ModuleKey<'a> = (
-    Vec<(&'a str, Option<&'a str>, Item<'a>)>,
-    Vec<(&'a str, Item<'a>)>,
-);
+type ModuleKey<'a> = (Vec<(&'a str, Option<&'a str>, Item<'a>)>, Vec<(&'a str, Item<'a>)>);
 
 impl<'a> TypeReference<'a> for ModuleType<'a> {
     type Key = ModuleKey<'a>;
@@ -370,11 +388,8 @@ impl<'a> TypeReference<'a> for ModuleType<'a> {
             .iter()
             .map(|import| (import.module, import.field, Item::new(&import.item)))
             .collect();
-        let exports = self
-            .exports
-            .iter()
-            .map(|export| (export.name, Item::new(&export.item)))
-            .collect();
+        let exports =
+            self.exports.iter().map(|export| (export.name, Item::new(&export.item))).collect();
         (imports, exports)
     }
 
@@ -413,7 +428,10 @@ impl<'a> TypeKey<'a> for ModuleKey<'a> {
                 item: item.to_sig(span),
             })
             .collect();
-        TypeDef::Module(ModuleType { imports, exports })
+        TypeDef::Module(ModuleType {
+            imports,
+            exports,
+        })
     }
 
     fn insert(&self, cx: &mut Expander<'a>, idx: Index<'a>) {

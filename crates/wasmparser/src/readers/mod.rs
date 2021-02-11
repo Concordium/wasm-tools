@@ -18,27 +18,13 @@ use super::{
     NameType, Naming, Operator, Range, RelocType, Result, SectionCode, TableType, Type,
 };
 
-pub use self::alias_section::*;
-pub use self::code_section::*;
-pub use self::data_section::*;
-pub use self::element_section::*;
-pub use self::event_section::*;
-pub use self::export_section::*;
-pub use self::function_section::*;
-pub use self::global_section::*;
-pub use self::import_section::*;
-pub use self::init_expr::*;
-pub use self::instance_section::*;
-pub use self::linking_section::*;
-pub use self::memory_section::*;
-pub use self::module_section::*;
-pub use self::name_section::*;
-pub use self::operators::*;
-pub use self::producers_section::*;
-pub use self::reloc_section::*;
-pub use self::section_reader::*;
-pub use self::table_section::*;
-pub use self::type_section::*;
+pub use self::{
+    alias_section::*, code_section::*, data_section::*, element_section::*, event_section::*,
+    export_section::*, function_section::*, global_section::*, import_section::*, init_expr::*,
+    instance_section::*, linking_section::*, memory_section::*, module_section::*, name_section::*,
+    operators::*, producers_section::*, reloc_section::*, section_reader::*, table_section::*,
+    type_section::*,
+};
 
 mod alias_section;
 mod code_section;

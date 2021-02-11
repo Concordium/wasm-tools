@@ -5,7 +5,7 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, MemorySection, MemoryType, Limits};
+/// use wasm_encoder::{Limits, MemorySection, MemoryType, Module};
 ///
 /// let mut memories = MemorySection::new();
 /// memories.memory(MemoryType {
@@ -21,7 +21,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct MemorySection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -29,7 +29,7 @@ impl MemorySection {
     /// Create a new memory section encoder.
     pub fn new() -> MemorySection {
         MemorySection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -43,14 +43,11 @@ impl MemorySection {
 }
 
 impl Section for MemorySection {
-    fn id(&self) -> u8 {
-        SectionId::Memory.into()
-    }
+    fn id(&self) -> u8 { SectionId::Memory.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(
@@ -68,7 +65,5 @@ pub struct MemoryType {
 }
 
 impl MemoryType {
-    pub(crate) fn encode(&self, bytes: &mut Vec<u8>) {
-        self.limits.encode(bytes);
-    }
+    pub(crate) fn encode(&self, bytes: &mut Vec<u8>) { self.limits.encode(bytes); }
 }

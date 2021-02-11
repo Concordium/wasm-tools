@@ -10,7 +10,7 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, InstanceSection, Export};
+/// use wasm_encoder::{Export, InstanceSection, Module};
 ///
 /// let mut instances = InstanceSection::new();
 /// instances.instantiate(0, vec![
@@ -25,7 +25,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct InstanceSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -33,7 +33,7 @@ impl InstanceSection {
     /// Construct a new instance section encoder.
     pub fn new() -> InstanceSection {
         InstanceSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -43,14 +43,12 @@ impl InstanceSection {
     pub fn instantiate<'a, I>(&mut self, module: u32, args: I) -> &mut Self
     where
         I: IntoIterator<Item = (&'a str, Export)>,
-        I::IntoIter: ExactSizeIterator,
-    {
+        I::IntoIter: ExactSizeIterator, {
         let args = args.into_iter();
 
         self.bytes.push(0x00);
         self.bytes.extend(encoders::u32(module));
-        self.bytes
-            .extend(encoders::u32(u32::try_from(args.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(args.len()).unwrap()));
         for (name, export) in args {
             self.bytes.extend(encoders::str(name));
             export.encode(&mut self.bytes);
@@ -61,14 +59,11 @@ impl InstanceSection {
 }
 
 impl Section for InstanceSection {
-    fn id(&self) -> u8 {
-        SectionId::Instance.into()
-    }
+    fn id(&self) -> u8 { SectionId::Instance.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

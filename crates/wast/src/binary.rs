@@ -12,8 +12,7 @@ fn encode_fields(
     module_name: &Option<NameAnnotation<'_>>,
     fields: &[ModuleField<'_>],
 ) -> Vec<u8> {
-    use crate::ast::CustomPlace::*;
-    use crate::ast::CustomPlaceAnchor::*;
+    use crate::ast::{CustomPlace::*, CustomPlaceAnchor::*};
 
     let mut types = Vec::new();
     let mut imports = Vec::new();
@@ -51,8 +50,8 @@ fn encode_fields(
     }
 
     let mut e = Encoder {
-        wasm: Vec::new(),
-        tmp: Vec::new(),
+        wasm:    Vec::new(),
+        tmp:     Vec::new(),
         customs: &customs,
     };
     e.wasm.extend(b"\0asm");
@@ -133,7 +132,10 @@ fn encode_fields(
         funcs
             .iter()
             .filter_map(|f| match &f.kind {
-                FuncKind::Inline { expression, .. } => Some(expression),
+                FuncKind::Inline {
+                    expression,
+                    ..
+                } => Some(expression),
                 _ => None,
             })
             .flat_map(|e| e.instrs.iter())
@@ -145,8 +147,8 @@ fn encode_fields(
 }
 
 struct Encoder<'a> {
-    wasm: Vec<u8>,
-    tmp: Vec<u8>,
+    wasm:    Vec<u8>,
+    tmp:     Vec<u8>,
     customs: &'a [&'a Custom<'a>],
 }
 
@@ -180,9 +182,7 @@ pub(crate) trait Encode {
 }
 
 impl<T: Encode + ?Sized> Encode for &'_ T {
-    fn encode(&self, e: &mut Vec<u8>) {
-        T::encode(self, e)
-    }
+    fn encode(&self, e: &mut Vec<u8>) { T::encode(self, e) }
 }
 
 impl<T: Encode> Encode for [T] {
@@ -195,9 +195,7 @@ impl<T: Encode> Encode for [T] {
 }
 
 impl<T: Encode> Encode for Vec<T> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        <[T]>::encode(self, e)
-    }
+    fn encode(&self, e: &mut Vec<u8>) { <[T]>::encode(self, e) }
 }
 
 impl Encode for str {
@@ -215,33 +213,23 @@ impl Encode for usize {
 }
 
 impl Encode for u8 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        e.push(*self);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { e.push(*self); }
 }
 
 impl Encode for u32 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        leb128::write::unsigned(e, (*self).into()).unwrap();
-    }
+    fn encode(&self, e: &mut Vec<u8>) { leb128::write::unsigned(e, (*self).into()).unwrap(); }
 }
 
 impl Encode for i32 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        leb128::write::signed(e, (*self).into()).unwrap();
-    }
+    fn encode(&self, e: &mut Vec<u8>) { leb128::write::signed(e, (*self).into()).unwrap(); }
 }
 
 impl Encode for u64 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        leb128::write::unsigned(e, (*self).into()).unwrap();
-    }
+    fn encode(&self, e: &mut Vec<u8>) { leb128::write::unsigned(e, (*self).into()).unwrap(); }
 }
 
 impl Encode for i64 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        leb128::write::signed(e, *self).unwrap();
-    }
+    fn encode(&self, e: &mut Vec<u8>) { leb128::write::signed(e, *self).unwrap(); }
 }
 
 impl Encode for FunctionType<'_> {
@@ -279,9 +267,7 @@ impl Encode for ModuleType<'_> {
 }
 
 impl Encode for InstanceType<'_> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.exports.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.exports.encode(e); }
 }
 
 impl Encode for ExportType<'_> {
@@ -479,10 +465,7 @@ impl Encode for ItemSig<'_> {
 
 impl<T> Encode for TypeUse<'_, T> {
     fn encode(&self, e: &mut Vec<u8>) {
-        self.index
-            .as_ref()
-            .expect("TypeUse should be filled in by this point")
-            .encode(e)
+        self.index.as_ref().expect("TypeUse should be filled in by this point").encode(e)
     }
 }
 
@@ -496,16 +479,20 @@ impl Encode for Index<'_> {
 }
 
 impl<T> Encode for IndexOrRef<'_, T> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.0.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.0.encode(e); }
 }
 
 impl<T> Encode for ItemRef<'_, T> {
     fn encode(&self, e: &mut Vec<u8>) {
         match self {
-            ItemRef::Outer { .. } => panic!("should be expanded previously"),
-            ItemRef::Item { idx, exports, .. } => {
+            ItemRef::Outer {
+                ..
+            } => panic!("should be expanded previously"),
+            ItemRef::Item {
+                idx,
+                exports,
+                ..
+            } => {
                 assert!(exports.is_empty());
                 idx.encode(e);
             }
@@ -539,7 +526,10 @@ impl Encode for Limits {
 impl Encode for MemoryType {
     fn encode(&self, e: &mut Vec<u8>) {
         match self {
-            MemoryType::B32 { limits, shared } => {
+            MemoryType::B32 {
+                limits,
+                shared,
+            } => {
                 let flag_max = limits.max.is_some() as u8;
                 let flag_shared = *shared as u8;
                 let flags = flag_max | (flag_shared << 1);
@@ -549,7 +539,10 @@ impl Encode for MemoryType {
                     max.encode(e);
                 }
             }
-            MemoryType::B64 { limits, shared } => {
+            MemoryType::B64 {
+                limits,
+                shared,
+            } => {
                 let flag_max = limits.max.is_some() as u8;
                 let flag_shared = *shared as u8;
                 let flags = flag_max | (flag_shared << 1) | 0x04;
@@ -608,7 +601,11 @@ impl Encode for Global<'_> {
 impl Encode for Export<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         self.name.encode(e);
-        if let ItemRef::Item { kind, .. } = &self.index {
+        if let ItemRef::Item {
+            kind,
+            ..
+        } = &self.index
+        {
             kind.encode(e);
         }
         self.index.encode(e);
@@ -671,7 +668,13 @@ impl Encode for Elem<'_> {
                 e.push(0x01); // flags
                 e.push(0x00); // extern_kind
             }
-            (ElemKind::Active { table, offset }, ElemPayload::Indices(_)) => {
+            (
+                ElemKind::Active {
+                    table,
+                    offset,
+                },
+                ElemPayload::Indices(_),
+            ) => {
                 e.push(0x02); // flags
                 table.encode(e);
                 offset.encode(e);
@@ -698,11 +701,26 @@ impl Encode for Elem<'_> {
                 e.push(0x04);
                 offset.encode(e);
             }
-            (ElemKind::Passive, ElemPayload::Exprs { ty, .. }) => {
+            (
+                ElemKind::Passive,
+                ElemPayload::Exprs {
+                    ty,
+                    ..
+                },
+            ) => {
                 e.push(0x05);
                 ty.encode(e);
             }
-            (ElemKind::Active { table, offset }, ElemPayload::Exprs { ty, .. }) => {
+            (
+                ElemKind::Active {
+                    table,
+                    offset,
+                },
+                ElemPayload::Exprs {
+                    ty,
+                    ..
+                },
+            ) => {
                 e.push(0x06);
                 table.encode(e);
                 offset.encode(e);
@@ -712,7 +730,13 @@ impl Encode for Elem<'_> {
                 e.push(0x03); // flags
                 e.push(0x00); // extern_kind
             }
-            (ElemKind::Declared, ElemPayload::Exprs { ty, .. }) => {
+            (
+                ElemKind::Declared,
+                ElemPayload::Exprs {
+                    ty,
+                    ..
+                },
+            ) => {
                 e.push(0x07); // flags
                 ty.encode(e);
             }
@@ -732,7 +756,10 @@ impl Encode for ElemPayload<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         match self {
             ElemPayload::Indices(v) => v.encode(e),
-            ElemPayload::Exprs { exprs, ty } => {
+            ElemPayload::Exprs {
+                exprs,
+                ty,
+            } => {
                 exprs.len().encode(e);
                 for idx in exprs {
                     match idx {
@@ -754,7 +781,10 @@ impl Encode for Data<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         match &self.kind {
             DataKind::Passive => e.push(0x01),
-            DataKind::Active { memory, offset } => {
+            DataKind::Active {
+                memory,
+                offset,
+            } => {
                 if let ItemRef::Item {
                     idx: Index::Num(0, _),
                     ..
@@ -780,7 +810,10 @@ impl Encode for Func<'_> {
         assert!(self.exports.names.is_empty());
         let mut tmp = Vec::new();
         let (expr, locals) = match &self.kind {
-            FuncKind::Inline { expression, locals } => (expression, locals),
+            FuncKind::Inline {
+                expression,
+                locals,
+            } => (expression, locals),
             _ => panic!("should only have inline functions in emission"),
         };
 
@@ -827,11 +860,7 @@ impl Encode for BlockType<'_> {
         {
             return i64::from(*n).encode(e);
         }
-        let ty = self
-            .ty
-            .inline
-            .as_ref()
-            .expect("function type not filled in");
+        let ty = self.ty.inline.as_ref().expect("function type not filled in");
         if ty.params.is_empty() && ty.results.is_empty() {
             return e.push(0x40);
         }
@@ -843,9 +872,7 @@ impl Encode for BlockType<'_> {
 }
 
 impl Encode for FuncBindType<'_> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.ty.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.ty.encode(e); }
 }
 
 impl Encode for LetType<'_> {
@@ -856,9 +883,7 @@ impl Encode for LetType<'_> {
 }
 
 impl Encode for LaneArg {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.lane.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.lane.encode(e); }
 }
 
 impl Encode for MemArg<'_> {
@@ -909,15 +934,11 @@ impl Encode for TableCopy<'_> {
 }
 
 impl Encode for TableArg<'_> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.dst.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.dst.encode(e); }
 }
 
 impl Encode for MemoryArg<'_> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.mem.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.mem.encode(e); }
 }
 
 impl Encode for MemoryInit<'_> {
@@ -942,20 +963,16 @@ impl Encode for BrTableIndices<'_> {
 }
 
 impl Encode for Float32 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        e.extend_from_slice(&self.bits.to_le_bytes());
-    }
+    fn encode(&self, e: &mut Vec<u8>) { e.extend_from_slice(&self.bits.to_le_bytes()); }
 }
 
 impl Encode for Float64 {
-    fn encode(&self, e: &mut Vec<u8>) {
-        e.extend_from_slice(&self.bits.to_le_bytes());
-    }
+    fn encode(&self, e: &mut Vec<u8>) { e.extend_from_slice(&self.bits.to_le_bytes()); }
 }
 
 struct Names<'a> {
     module: Option<&'a str>,
-    funcs: Vec<(u32, &'a str)>,
+    funcs:  Vec<(u32, &'a str)>,
     locals: Vec<(u32, Vec<(u32, &'a str)>)>,
 }
 
@@ -1010,7 +1027,11 @@ fn find_names<'a>(
                         local_idx += 1;
                     }
                 }
-                if let FuncKind::Inline { locals, .. } = &f.kind {
+                if let FuncKind::Inline {
+                    locals,
+                    ..
+                } = &f.kind
+                {
                     for local in locals {
                         if let Some(name) = get_name(&local.id, &local.name) {
                             local_names.push((local_idx, name));
@@ -1088,15 +1109,11 @@ impl Encode for Id<'_> {
 }
 
 impl Encode for V128Const {
-    fn encode(&self, dst: &mut Vec<u8>) {
-        dst.extend_from_slice(&self.to_le_bytes());
-    }
+    fn encode(&self, dst: &mut Vec<u8>) { dst.extend_from_slice(&self.to_le_bytes()); }
 }
 
 impl Encode for I8x16Shuffle {
-    fn encode(&self, dst: &mut Vec<u8>) {
-        dst.extend_from_slice(&self.lanes);
-    }
+    fn encode(&self, dst: &mut Vec<u8>) { dst.extend_from_slice(&self.lanes); }
 }
 
 impl<'a> Encode for SelectTypes<'a> {
@@ -1120,9 +1137,7 @@ impl Encode for Custom<'_> {
 }
 
 impl Encode for Event<'_> {
-    fn encode(&self, e: &mut Vec<u8>) {
-        self.ty.encode(e);
-    }
+    fn encode(&self, e: &mut Vec<u8>) { self.ty.encode(e); }
 }
 
 impl Encode for EventType<'_> {
@@ -1183,7 +1198,10 @@ impl Encode for StructNarrow<'_> {
 impl Encode for NestedModule<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         let fields = match &self.kind {
-            NestedModuleKind::Inline { fields, .. } => fields,
+            NestedModuleKind::Inline {
+                fields,
+                ..
+            } => fields,
             _ => panic!("should only have inline modules in emission"),
         };
 
@@ -1195,7 +1213,10 @@ impl Encode for Instance<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         assert!(self.exports.names.is_empty());
         let (module, args) = match &self.kind {
-            InstanceKind::Inline { module, args } => (module, args),
+            InstanceKind::Inline {
+                module,
+                args,
+            } => (module, args),
             _ => panic!("should only have inline instances in emission"),
         };
         e.push(0x00);
@@ -1207,7 +1228,11 @@ impl Encode for Instance<'_> {
 impl Encode for InstanceArg<'_> {
     fn encode(&self, e: &mut Vec<u8>) {
         self.name.encode(e);
-        if let ItemRef::Item { kind, .. } = &self.index {
+        if let ItemRef::Item {
+            kind,
+            ..
+        } = &self.index
+        {
             kind.encode(e);
         }
         self.index.encode(e);

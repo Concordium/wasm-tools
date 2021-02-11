@@ -1,5 +1,4 @@
-use crate::ast::*;
-use crate::resolve::gensym;
+use crate::{ast::*, resolve::gensym};
 use std::mem;
 
 pub fn run(fields: &mut Vec<ModuleField>) {
@@ -15,18 +14,20 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                 match f.kind {
                     FuncKind::Import(import) => {
                         *item = ModuleField::Import(Import {
-                            span: f.span,
+                            span:   f.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: f.span,
-                                id: f.id,
+                                id:   f.id,
                                 name: f.name,
                                 kind: ItemKind::Func(f.ty.clone()),
                             },
                         });
                     }
-                    FuncKind::Inline { .. } => {}
+                    FuncKind::Inline {
+                        ..
+                    } => {}
                 }
             }
 
@@ -35,14 +36,17 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     to_append.push(export(m.span, name, ExportKind::Memory, &mut m.id));
                 }
                 match m.kind {
-                    MemoryKind::Import { import, ty } => {
+                    MemoryKind::Import {
+                        import,
+                        ty,
+                    } => {
                         *item = ModuleField::Import(Import {
-                            span: m.span,
+                            span:   m.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: m.span,
-                                id: m.id,
+                                id:   m.id,
                                 name: None,
                                 kind: ItemKind::Memory(ty),
                             },
@@ -50,28 +54,36 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     }
                     // If data is defined inline insert an explicit `data` module
                     // field here instead, switching this to a `Normal` memory.
-                    MemoryKind::Inline { is_32, ref data } => {
+                    MemoryKind::Inline {
+                        is_32,
+                        ref data,
+                    } => {
                         let len = data.iter().map(|l| l.len()).sum::<usize>() as u32;
                         let pages = (len + page_size() - 1) / page_size();
-                        let kind = MemoryKind::Normal(if is_32 {
-                            MemoryType::B32 {
-                                limits: Limits {
-                                    min: pages,
-                                    max: Some(pages),
-                                },
-                                shared: false,
-                            }
-                        } else {
-                            MemoryType::B64 {
-                                limits: Limits64 {
-                                    min: u64::from(pages),
-                                    max: Some(u64::from(pages)),
-                                },
-                                shared: false,
-                            }
-                        });
+                        let kind = MemoryKind::Normal(
+                            if is_32 {
+                                MemoryType::B32 {
+                                    limits: Limits {
+                                        min: pages,
+                                        max: Some(pages),
+                                    },
+                                    shared: false,
+                                }
+                            } else {
+                                MemoryType::B64 {
+                                    limits: Limits64 {
+                                        min: u64::from(pages),
+                                        max: Some(u64::from(pages)),
+                                    },
+                                    shared: false,
+                                }
+                            },
+                        );
                         let data = match mem::replace(&mut m.kind, kind) {
-                            MemoryKind::Inline { data, .. } => data,
+                            MemoryKind::Inline {
+                                data,
+                                ..
+                            } => data,
                             _ => unreachable!(),
                         };
                         let id = gensym::fill(m.span, &mut m.id);
@@ -97,14 +109,17 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     to_append.push(export(t.span, name, ExportKind::Table, &mut t.id));
                 }
                 match &mut t.kind {
-                    TableKind::Import { import, ty } => {
+                    TableKind::Import {
+                        import,
+                        ty,
+                    } => {
                         *item = ModuleField::Import(Import {
-                            span: t.span,
+                            span:   t.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: t.span,
-                                id: t.id,
+                                id:   t.id,
                                 name: None,
                                 kind: ItemKind::Table(*ty),
                             },
@@ -112,20 +127,29 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     }
                     // If data is defined inline insert an explicit `data` module
                     // field here instead, switching this to a `Normal` memory.
-                    TableKind::Inline { payload, elem } => {
+                    TableKind::Inline {
+                        payload,
+                        elem,
+                    } => {
                         let len = match payload {
                             ElemPayload::Indices(v) => v.len(),
-                            ElemPayload::Exprs { exprs, .. } => exprs.len(),
+                            ElemPayload::Exprs {
+                                exprs,
+                                ..
+                            } => exprs.len(),
                         };
                         let kind = TableKind::Normal(TableType {
                             limits: Limits {
                                 min: len as u32,
                                 max: Some(len as u32),
                             },
-                            elem: *elem,
+                            elem:   *elem,
                         });
                         let payload = match mem::replace(&mut t.kind, kind) {
-                            TableKind::Inline { payload, .. } => payload,
+                            TableKind::Inline {
+                                payload,
+                                ..
+                            } => payload,
                             _ => unreachable!(),
                         };
                         let id = gensym::fill(t.span, &mut t.id);
@@ -133,7 +157,7 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                             span: t.span,
                             id: None,
                             kind: ElemKind::Active {
-                                table: item_ref(kw::table(t.span), id),
+                                table:  item_ref(kw::table(t.span), id),
                                 offset: Expression {
                                     instrs: Box::new([Instruction::I32Const(0)]),
                                 },
@@ -153,18 +177,20 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                 match g.kind {
                     GlobalKind::Import(import) => {
                         *item = ModuleField::Import(Import {
-                            span: g.span,
+                            span:   g.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: g.span,
-                                id: g.id,
+                                id:   g.id,
                                 name: None,
                                 kind: ItemKind::Global(g.ty),
                             },
                         });
                     }
-                    GlobalKind::Inline { .. } => {}
+                    GlobalKind::Inline {
+                        ..
+                    } => {}
                 }
             }
 
@@ -179,14 +205,17 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     to_append.push(export(i.span, name, ExportKind::Instance, &mut i.id));
                 }
                 match &mut i.kind {
-                    InstanceKind::Import { import, ty } => {
+                    InstanceKind::Import {
+                        import,
+                        ty,
+                    } => {
                         *item = ModuleField::Import(Import {
-                            span: i.span,
+                            span:   i.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: i.span,
-                                id: i.id,
+                                id:   i.id,
                                 name: None,
                                 kind: ItemKind::Instance(mem::replace(
                                     ty,
@@ -195,7 +224,9 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                             },
                         });
                     }
-                    InstanceKind::Inline { .. } => {}
+                    InstanceKind::Inline {
+                        ..
+                    } => {}
                 }
             }
 
@@ -204,14 +235,17 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                     to_append.push(export(m.span, name, ExportKind::Module, &mut m.id));
                 }
                 match &mut m.kind {
-                    NestedModuleKind::Import { import, ty } => {
+                    NestedModuleKind::Import {
+                        import,
+                        ty,
+                    } => {
                         *item = ModuleField::Import(Import {
-                            span: m.span,
+                            span:   m.span,
                             module: import.module,
-                            field: import.field,
-                            item: ItemSig {
+                            field:  import.field,
+                            item:   ItemSig {
                                 span: m.span,
-                                id: m.id,
+                                id:   m.id,
                                 name: m.name,
                                 kind: ItemKind::Module(mem::replace(
                                     ty,
@@ -220,7 +254,10 @@ pub fn run(fields: &mut Vec<ModuleField>) {
                             },
                         });
                     }
-                    NestedModuleKind::Inline { fields, .. } => {
+                    NestedModuleKind::Inline {
+                        fields,
+                        ..
+                    } => {
                         run(fields);
                     }
                 };
@@ -242,9 +279,7 @@ pub fn run(fields: &mut Vec<ModuleField>) {
 
     assert!(to_append.is_empty());
 
-    fn page_size() -> u32 {
-        1 << 16
-    }
+    fn page_size() -> u32 { 1 << 16 }
 }
 
 fn export<'a>(

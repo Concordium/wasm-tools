@@ -23,20 +23,15 @@ pub struct OperatorsReader<'a> {
 impl<'a> OperatorsReader<'a> {
     pub(crate) fn new<'b>(data: &'a [u8], offset: usize) -> OperatorsReader<'b>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         OperatorsReader {
             reader: BinaryReader::new_with_offset(data, offset),
         }
     }
 
-    pub fn eof(&self) -> bool {
-        self.reader.eof()
-    }
+    pub fn eof(&self) -> bool { self.reader.eof() }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
     pub fn ensure_end(&self) -> Result<()> {
         if self.eof() {
@@ -50,39 +45,36 @@ impl<'a> OperatorsReader<'a> {
 
     pub fn read<'b>(&mut self) -> Result<Operator<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         self.reader.read_operator()
     }
 
     pub fn into_iter_with_offsets<'b>(self) -> OperatorsIteratorWithOffsets<'b>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         OperatorsIteratorWithOffsets {
             reader: self,
-            err: false,
+            err:    false,
         }
     }
 
     pub fn read_with_offset<'b>(&mut self) -> Result<(Operator<'b>, usize)>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let pos = self.reader.original_position();
         Ok((self.read()?, pos))
     }
 }
 
 impl<'a> IntoIterator for OperatorsReader<'a> {
-    type Item = Result<Operator<'a>>;
     type IntoIter = OperatorsIterator<'a>;
+    type Item = Result<Operator<'a>>;
 
     /// Reads content of the code section.
     ///
     /// # Examples
     /// ```
-    /// use wasmparser::{Operator, CodeSectionReader, Result};
+    /// use wasmparser::{CodeSectionReader, Operator, Result};
     /// # let data: &[u8] = &[
     /// #     0x01, 0x03, 0x00, 0x01, 0x0b];
     /// let mut code_reader = CodeSectionReader::new(data, 0).unwrap();
@@ -91,7 +83,11 @@ impl<'a> IntoIterator for OperatorsReader<'a> {
     ///     let mut op_reader = body.get_operators_reader().expect("op reader");
     ///     let ops = op_reader.into_iter().collect::<Result<Vec<Operator>>>().expect("ops");
     ///     assert!(
-    ///         if let [Operator::Nop, Operator::End] = ops.as_slice() { true } else { false },
+    ///         if let [Operator::Nop, Operator::End] = ops.as_slice() {
+    ///             true
+    ///         } else {
+    ///             false
+    ///         },
     ///         "found {:?}",
     ///         ops
     ///     );
@@ -100,14 +96,14 @@ impl<'a> IntoIterator for OperatorsReader<'a> {
     fn into_iter(self) -> Self::IntoIter {
         OperatorsIterator {
             reader: self,
-            err: false,
+            err:    false,
         }
     }
 }
 
 pub struct OperatorsIterator<'a> {
     reader: OperatorsReader<'a>,
-    err: bool,
+    err:    bool,
 }
 
 impl<'a> Iterator for OperatorsIterator<'a> {
@@ -125,7 +121,7 @@ impl<'a> Iterator for OperatorsIterator<'a> {
 
 pub struct OperatorsIteratorWithOffsets<'a> {
     reader: OperatorsReader<'a>,
-    err: bool,
+    err:    bool,
 }
 
 impl<'a> Iterator for OperatorsIteratorWithOffsets<'a> {
@@ -135,16 +131,23 @@ impl<'a> Iterator for OperatorsIteratorWithOffsets<'a> {
     ///
     /// # Examples
     /// ```
-    /// use wasmparser::{Operator, CodeSectionReader, Result};
+    /// use wasmparser::{CodeSectionReader, Operator, Result};
     /// # let data: &[u8] = &[
     /// #     0x01, 0x03, 0x00, /* offset = 23 */ 0x01, 0x0b];
     /// let mut code_reader = CodeSectionReader::new(data, 20).unwrap();
     /// for _ in 0..code_reader.get_count() {
     ///     let body = code_reader.read().expect("function body");
     ///     let mut op_reader = body.get_operators_reader().expect("op reader");
-    ///     let ops = op_reader.into_iter_with_offsets().collect::<Result<Vec<(Operator, usize)>>>().expect("ops");
+    ///     let ops = op_reader
+    ///         .into_iter_with_offsets()
+    ///         .collect::<Result<Vec<(Operator, usize)>>>()
+    ///         .expect("ops");
     ///     assert!(
-    ///         if let [(Operator::Nop, 23), (Operator::End, 24)] = ops.as_slice() { true } else { false },
+    ///         if let [(Operator::Nop, 23), (Operator::End, 24)] = ops.as_slice() {
+    ///             true
+    ///         } else {
+    ///             false
+    ///         },
     ///         "found {:?}",
     ///         ops
     ///     );

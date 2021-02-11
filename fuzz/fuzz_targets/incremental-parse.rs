@@ -41,7 +41,10 @@ fuzz_target!(|data: Vec<Vec<u8>>| {
                 buf.extend(data.next().unwrap());
                 continue;
             }
-            Ok(Chunk::Parsed { consumed, payload }) => {
+            Ok(Chunk::Parsed {
+                consumed,
+                payload,
+            }) => {
                 log::debug!("parsed {} bytes", consumed);
                 pos += consumed;
                 payload
@@ -74,7 +77,16 @@ fuzz_target!(|data: Vec<Vec<u8>>| {
                     break;
                 }
             },
-            (Version { num: a, range: ar }, Version { num: b, range: br }) => {
+            (
+                Version {
+                    num: a,
+                    range: ar,
+                },
+                Version {
+                    num: b,
+                    range: br,
+                },
+            ) => {
                 assert_eq!(a, b);
                 assert_eq!(ar, br);
             }
@@ -89,7 +101,16 @@ fuzz_target!(|data: Vec<Vec<u8>>| {
             (GlobalSection(a), GlobalSection(b)) => assert_eq!(a.range(), b.range()),
             (ExportSection(a), ExportSection(b)) => assert_eq!(a.range(), b.range()),
             (EventSection(a), EventSection(b)) => assert_eq!(a.range(), b.range()),
-            (StartSection { func: a, range: ar }, StartSection { func: b, range: br }) => {
+            (
+                StartSection {
+                    func: a,
+                    range: ar,
+                },
+                StartSection {
+                    func: b,
+                    range: br,
+                },
+            ) => {
                 assert_eq!(a, b);
                 assert_eq!(ar, br);
             }
@@ -161,7 +182,10 @@ fuzz_target!(|data: Vec<Vec<u8>>| {
                     range: ar,
                     parser: ap,
                 },
-                ModuleSectionEntry { range: br, .. },
+                ModuleSectionEntry {
+                    range: br,
+                    ..
+                },
             ) => {
                 assert_eq!(ar, br);
                 stack.push(parser);

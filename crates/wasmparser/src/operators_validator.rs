@@ -22,9 +22,11 @@
 // confusing it's recomended to read over that section to see how it maps to
 // the various methods here.
 
-use crate::limits::MAX_WASM_FUNCTION_LOCALS;
-use crate::primitives::{MemoryImmediate, Operator, SIMDLaneIndex, Type, TypeOrFuncType};
-use crate::{BinaryReaderError, Result, WasmFeatures, WasmFuncType, WasmModuleResources};
+use crate::{
+    limits::MAX_WASM_FUNCTION_LOCALS,
+    primitives::{MemoryImmediate, Operator, SIMDLaneIndex, Type, TypeOrFuncType},
+    BinaryReaderError, Result, WasmFeatures, WasmFuncType, WasmModuleResources,
+};
 
 /// A wrapper around a `BinaryReaderError` where the inner error's offset is a
 /// temporary placeholder value. This can be converted into a proper
@@ -83,7 +85,7 @@ pub(crate) struct OperatorValidator {
     // The `operands` is the current type stack, and the `control` list is the
     // list of blocks that we're currently in.
     pub(crate) operands: Vec<Option<Type>>,
-    control: Vec<Frame>,
+    control:             Vec<Frame>,
 
     // This is a list of flags for wasm features which are used to gate various
     // instructions.
@@ -134,9 +136,9 @@ impl OperatorValidator {
             locals,
             operands: Vec::new(),
             control: vec![Frame {
-                kind: FrameKind::Block,
-                block_type: TypeOrFuncType::FuncType(ty),
-                height: 0,
+                kind:        FrameKind::Block,
+                block_type:  TypeOrFuncType::FuncType(ty),
+                height:      0,
                 unreachable: false,
             }],
             features: *features,
@@ -144,9 +146,7 @@ impl OperatorValidator {
     }
 
     pub fn define_locals(&mut self, offset: usize, count: u32, ty: Type) -> Result<()> {
-        self.features
-            .check_value_type(ty)
-            .map_err(|e| BinaryReaderError::new(e, offset))?;
+        self.features.check_value_type(ty).map_err(|e| BinaryReaderError::new(e, offset))?;
         if count == 0 {
             return Ok(());
         }
@@ -185,9 +185,7 @@ impl OperatorValidator {
     /// operand stack. This can fail, but only if `Type` is feature gated.
     /// Otherwise the push operation always succeeds.
     fn push_operand(&mut self, ty: Type) -> OperatorValidatorResult<()> {
-        self.features
-            .check_value_type(ty)
-            .map_err(OperatorValidatorError::new)?;
+        self.features.check_value_type(ty).map_err(OperatorValidatorError::new)?;
         self.operands.push(Some(ty));
         Ok(())
     }
@@ -329,9 +327,7 @@ impl OperatorValidator {
         resources: impl WasmModuleResources,
     ) -> OperatorValidatorResult<Type> {
         if memory_index > 0 && !self.features.multi_memory {
-            return Err(OperatorValidatorError::new(
-                "multi-memory support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("multi-memory support is not enabled"));
         }
         match resources.memory_at(memory_index) {
             Some(mem) => Ok(mem.index_type()),
@@ -350,9 +346,7 @@ impl OperatorValidator {
         let index_ty = self.check_memory_index(memarg.memory, resources)?;
         let align = memarg.align;
         if align > max_align {
-            return Err(OperatorValidatorError::new(
-                "alignment must not be larger than natural",
-            ));
+            return Err(OperatorValidatorError::new("alignment must not be larger than natural"));
         }
         Ok(index_ty)
     }
@@ -360,33 +354,25 @@ impl OperatorValidator {
     #[cfg(feature = "deterministic")]
     fn check_non_deterministic_enabled(&self) -> OperatorValidatorResult<()> {
         if !self.features.deterministic_only {
-            return Err(OperatorValidatorError::new(
-                "deterministic_only support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("deterministic_only support is not enabled"));
         }
         Ok(())
     }
 
     #[inline(always)]
     #[cfg(not(feature = "deterministic"))]
-    fn check_non_deterministic_enabled(&self) -> OperatorValidatorResult<()> {
-        Ok(())
-    }
+    fn check_non_deterministic_enabled(&self) -> OperatorValidatorResult<()> { Ok(()) }
 
     fn check_threads_enabled(&self) -> OperatorValidatorResult<()> {
         if !self.features.threads {
-            return Err(OperatorValidatorError::new(
-                "threads support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("threads support is not enabled"));
         }
         Ok(())
     }
 
     fn check_reference_types_enabled(&self) -> OperatorValidatorResult<()> {
         if !self.features.reference_types {
-            return Err(OperatorValidatorError::new(
-                "reference types support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("reference types support is not enabled"));
         }
         Ok(())
     }
@@ -400,18 +386,14 @@ impl OperatorValidator {
 
     fn check_exceptions_enabled(&self) -> OperatorValidatorResult<()> {
         if !self.features.exceptions {
-            return Err(OperatorValidatorError::new(
-                "Exceptions support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("Exceptions support is not enabled"));
         }
         Ok(())
     }
 
     fn check_bulk_memory_enabled(&self) -> OperatorValidatorResult<()> {
         if !self.features.bulk_memory {
-            return Err(OperatorValidatorError::new(
-                "bulk memory support is not enabled",
-            ));
+            return Err(OperatorValidatorError::new("bulk memory support is not enabled"));
         }
         Ok(())
     }
@@ -452,14 +434,14 @@ impl OperatorValidator {
                 if !self.features.multi_value {
                     if ty.len_outputs() > 1 {
                         return Err(OperatorValidatorError::new(
-                            "blocks, loops, and ifs may only return at most one \
-                             value when multi-value is not enabled",
+                            "blocks, loops, and ifs may only return at most one value when \
+                             multi-value is not enabled",
                         ));
                     }
                     if ty.len_inputs() > 0 {
                         return Err(OperatorValidatorError::new(
-                            "blocks, loops, and ifs accept no parameters \
-                             when multi-value is not enabled",
+                            "blocks, loops, and ifs accept no parameters when multi-value is not \
+                             enabled",
                         ));
                     }
                 }
@@ -479,10 +461,7 @@ impl OperatorValidator {
         let ty = match resources.type_of_function(function_index) {
             Some(i) => i,
             None => {
-                bail_op_err!(
-                    "unknown function {}: function index out of bounds",
-                    function_index
-                );
+                bail_op_err!("unknown function {}: function index out of bounds", function_index);
             }
         };
         for ty in ty.inputs().rev() {
@@ -554,21 +533,27 @@ impl OperatorValidator {
             // same as specified in the "Validation Algorithm" appendix of the
             // online wasm specification (referenced at the top of this module).
             Operator::Unreachable => self.unreachable(),
-            Operator::Block { ty } => {
+            Operator::Block {
+                ty,
+            } => {
                 self.check_block_type(ty, resources)?;
                 for ty in params(ty, resources)?.rev() {
                     self.pop_operand(Some(ty))?;
                 }
                 self.push_ctrl(FrameKind::Block, ty, resources)?;
             }
-            Operator::Loop { ty } => {
+            Operator::Loop {
+                ty,
+            } => {
                 self.check_block_type(ty, resources)?;
                 for ty in params(ty, resources)?.rev() {
                     self.pop_operand(Some(ty))?;
                 }
                 self.push_ctrl(FrameKind::Loop, ty, resources)?;
             }
-            Operator::If { ty } => {
+            Operator::If {
+                ty,
+            } => {
                 self.check_block_type(ty, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 for ty in params(ty, resources)?.rev() {
@@ -588,16 +573,18 @@ impl OperatorValidator {
                         // We assume `self.features.exceptions` is true when
                         // these frame kinds are present.
                         self.control.push(Frame {
-                            kind: FrameKind::CatchAll,
-                            block_type: frame.block_type,
-                            height: self.operands.len(),
+                            kind:        FrameKind::CatchAll,
+                            block_type:  frame.block_type,
+                            height:      self.operands.len(),
                             unreachable: false,
                         });
                     }
                     _ => bail_op_err!("else found outside of an `if` block"),
                 }
             }
-            Operator::Try { ty } => {
+            Operator::Try {
+                ty,
+            } => {
                 self.check_exceptions_enabled()?;
                 self.check_block_type(ty, resources)?;
                 for ty in params(ty, resources)?.rev() {
@@ -605,7 +592,9 @@ impl OperatorValidator {
                 }
                 self.push_ctrl(FrameKind::Try, ty, resources)?;
             }
-            Operator::Catch { index } => {
+            Operator::Catch {
+                index,
+            } => {
                 self.check_exceptions_enabled()?;
                 let frame = self.pop_ctrl(resources)?;
                 if frame.kind != FrameKind::Try && frame.kind != FrameKind::Catch {
@@ -613,9 +602,9 @@ impl OperatorValidator {
                 }
                 // Start a new frame and push `exnref` value.
                 self.control.push(Frame {
-                    kind: FrameKind::Catch,
-                    block_type: frame.block_type,
-                    height: self.operands.len(),
+                    kind:        FrameKind::Catch,
+                    block_type:  frame.block_type,
+                    height:      self.operands.len(),
                     unreachable: false,
                 });
                 // Push exception argument types.
@@ -624,7 +613,9 @@ impl OperatorValidator {
                     self.push_operand(ty)?;
                 }
             }
-            Operator::Throw { index } => {
+            Operator::Throw {
+                index,
+            } => {
                 self.check_exceptions_enabled()?;
                 // Check values associated with the exception.
                 let ty = event_at(&resources, index)?;
@@ -636,7 +627,9 @@ impl OperatorValidator {
                 }
                 self.unreachable();
             }
-            Operator::Rethrow { relative_depth } => {
+            Operator::Rethrow {
+                relative_depth,
+            } => {
                 self.check_exceptions_enabled()?;
                 // This is not a jump, but we need to check that the `rethrow`
                 // targets an actual `catch` to get the exception.
@@ -655,9 +648,9 @@ impl OperatorValidator {
                     bail_op_err!("unwind found outside of an `try` block");
                 }
                 self.control.push(Frame {
-                    kind: FrameKind::Unwind,
-                    block_type: TypeOrFuncType::Type(Type::EmptyBlockType),
-                    height: self.operands.len(),
+                    kind:        FrameKind::Unwind,
+                    block_type:  TypeOrFuncType::Type(Type::EmptyBlockType),
+                    height:      self.operands.len(),
                     unreachable: false,
                 });
             }
@@ -683,14 +676,18 @@ impl OperatorValidator {
                     self.push_operand(ty)?;
                 }
             }
-            Operator::Br { relative_depth } => {
+            Operator::Br {
+                relative_depth,
+            } => {
                 let (ty, kind) = self.jump(relative_depth)?;
                 for ty in label_types(ty, resources, kind)?.rev() {
                     self.pop_operand(Some(ty))?;
                 }
                 self.unreachable();
             }
-            Operator::BrIf { relative_depth } => {
+            Operator::BrIf {
+                relative_depth,
+            } => {
                 self.pop_operand(Some(Type::I32))?;
                 let (ty, kind) = self.jump(relative_depth)?;
                 for ty in label_types(ty, resources, kind)?.rev() {
@@ -700,7 +697,9 @@ impl OperatorValidator {
                     self.push_operand(ty)?;
                 }
             }
-            Operator::BrTable { ref table } => {
+            Operator::BrTable {
+                ref table,
+            } => {
                 self.pop_operand(Some(Type::I32))?;
                 let mut label = None;
                 for element in table.targets() {
@@ -729,24 +728,28 @@ impl OperatorValidator {
                 self.unreachable();
             }
             Operator::Return => self.check_return(resources)?,
-            Operator::Call { function_index } => self.check_call(function_index, resources)?,
-            Operator::ReturnCall { function_index } => {
+            Operator::Call {
+                function_index,
+            } => self.check_call(function_index, resources)?,
+            Operator::ReturnCall {
+                function_index,
+            } => {
                 if !self.features.tail_call {
-                    return Err(OperatorValidatorError::new(
-                        "tail calls support is not enabled",
-                    ));
+                    return Err(OperatorValidatorError::new("tail calls support is not enabled"));
                 }
                 self.check_call(function_index, resources)?;
                 self.check_return(resources)?;
             }
-            Operator::CallIndirect { index, table_index } => {
-                self.check_call_indirect(index, table_index, resources)?
-            }
-            Operator::ReturnCallIndirect { index, table_index } => {
+            Operator::CallIndirect {
+                index,
+                table_index,
+            } => self.check_call_indirect(index, table_index, resources)?,
+            Operator::ReturnCallIndirect {
+                index,
+                table_index,
+            } => {
                 if !self.features.tail_call {
-                    return Err(OperatorValidatorError::new(
-                        "tail calls support is not enabled",
-                    ));
+                    return Err(OperatorValidatorError::new("tail calls support is not enabled"));
                 }
                 self.check_call_indirect(index, table_index, resources)?;
                 self.check_return(resources)?;
@@ -770,26 +773,36 @@ impl OperatorValidator {
                     Some(_) => bail_op_err!("type mismatch: select only takes integral types"),
                 }
             }
-            Operator::TypedSelect { ty } => {
+            Operator::TypedSelect {
+                ty,
+            } => {
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(ty)?;
             }
-            Operator::LocalGet { local_index } => {
+            Operator::LocalGet {
+                local_index,
+            } => {
                 let ty = self.local(local_index)?;
                 self.push_operand(ty)?;
             }
-            Operator::LocalSet { local_index } => {
+            Operator::LocalSet {
+                local_index,
+            } => {
                 let ty = self.local(local_index)?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::LocalTee { local_index } => {
+            Operator::LocalTee {
+                local_index,
+            } => {
                 let ty = self.local(local_index)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(ty)?;
             }
-            Operator::GlobalGet { global_index } => {
+            Operator::GlobalGet {
+                global_index,
+            } => {
                 if let Some(ty) = resources.global_at(global_index) {
                     self.push_operand(ty.content_type)?;
                 } else {
@@ -798,7 +811,9 @@ impl OperatorValidator {
                     ));
                 };
             }
-            Operator::GlobalSet { global_index } => {
+            Operator::GlobalSet {
+                global_index,
+            } => {
                 if let Some(ty) = resources.global_at(global_index) {
                     if !ty.mutable {
                         return Err(OperatorValidatorError::new(
@@ -812,108 +827,165 @@ impl OperatorValidator {
                     ));
                 };
             }
-            Operator::I32Load { memarg } => {
+            Operator::I32Load {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I64Load { memarg } => {
+            Operator::I64Load {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 3, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::F32Load { memarg } => {
+            Operator::F32Load {
+                memarg,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::F32)?;
             }
-            Operator::F64Load { memarg } => {
+            Operator::F64Load {
+                memarg,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 let ty = self.check_memarg(memarg, 3, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::F64)?;
             }
-            Operator::I32Load8S { memarg } | Operator::I32Load8U { memarg } => {
+            Operator::I32Load8S {
+                memarg,
+            }
+            | Operator::I32Load8U {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 0, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I32Load16S { memarg } | Operator::I32Load16U { memarg } => {
+            Operator::I32Load16S {
+                memarg,
+            }
+            | Operator::I32Load16U {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 1, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I64Load8S { memarg } | Operator::I64Load8U { memarg } => {
+            Operator::I64Load8S {
+                memarg,
+            }
+            | Operator::I64Load8U {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 0, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I64Load16S { memarg } | Operator::I64Load16U { memarg } => {
+            Operator::I64Load16S {
+                memarg,
+            }
+            | Operator::I64Load16U {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 1, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I64Load32S { memarg } | Operator::I64Load32U { memarg } => {
+            Operator::I64Load32S {
+                memarg,
+            }
+            | Operator::I64Load32U {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I32Store { memarg } => {
+            Operator::I32Store {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I64Store { memarg } => {
+            Operator::I64Store {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 3, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::F32Store { memarg } => {
+            Operator::F32Store {
+                memarg,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(Type::F32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::F64Store { memarg } => {
+            Operator::F64Store {
+                memarg,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 let ty = self.check_memarg(memarg, 3, resources)?;
                 self.pop_operand(Some(Type::F64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I32Store8 { memarg } => {
+            Operator::I32Store8 {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 0, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I32Store16 { memarg } => {
+            Operator::I32Store16 {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 1, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I64Store8 { memarg } => {
+            Operator::I64Store8 {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 0, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I64Store16 { memarg } => {
+            Operator::I64Store16 {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 1, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I64Store32 { memarg } => {
+            Operator::I64Store32 {
+                memarg,
+            } => {
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::MemorySize { mem, mem_byte } => {
+            Operator::MemorySize {
+                mem,
+                mem_byte,
+            } => {
                 if mem_byte != 0 && !self.features.multi_memory {
                     return Err(OperatorValidatorError::new("multi-memory not enabled"));
                 }
                 let index_ty = self.check_memory_index(mem, resources)?;
                 self.push_operand(index_ty)?;
             }
-            Operator::MemoryGrow { mem, mem_byte } => {
+            Operator::MemoryGrow {
+                mem,
+                mem_byte,
+            } => {
                 if mem_byte != 0 && !self.features.multi_memory {
                     return Err(OperatorValidatorError::new("multi-memory not enabled"));
                 }
@@ -921,13 +993,21 @@ impl OperatorValidator {
                 self.pop_operand(Some(index_ty))?;
                 self.push_operand(index_ty)?;
             }
-            Operator::I32Const { .. } => self.push_operand(Type::I32)?,
-            Operator::I64Const { .. } => self.push_operand(Type::I64)?,
-            Operator::F32Const { .. } => {
+            Operator::I32Const {
+                ..
+            } => self.push_operand(Type::I32)?,
+            Operator::I64Const {
+                ..
+            } => self.push_operand(Type::I64)?,
+            Operator::F32Const {
+                ..
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.push_operand(Type::F32)?;
             }
-            Operator::F64Const { .. } => {
+            Operator::F64Const {
+                ..
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.push_operand(Type::F64)?;
             }
@@ -1179,99 +1259,209 @@ impl OperatorValidator {
                 self.push_operand(Type::I64)?;
             }
 
-            Operator::I32AtomicLoad { memarg }
-            | Operator::I32AtomicLoad16U { memarg }
-            | Operator::I32AtomicLoad8U { memarg } => {
+            Operator::I32AtomicLoad {
+                memarg,
+            }
+            | Operator::I32AtomicLoad16U {
+                memarg,
+            }
+            | Operator::I32AtomicLoad8U {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I64AtomicLoad { memarg }
-            | Operator::I64AtomicLoad32U { memarg }
-            | Operator::I64AtomicLoad16U { memarg }
-            | Operator::I64AtomicLoad8U { memarg } => {
+            Operator::I64AtomicLoad {
+                memarg,
+            }
+            | Operator::I64AtomicLoad32U {
+                memarg,
+            }
+            | Operator::I64AtomicLoad16U {
+                memarg,
+            }
+            | Operator::I64AtomicLoad8U {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I32AtomicStore { memarg }
-            | Operator::I32AtomicStore16 { memarg }
-            | Operator::I32AtomicStore8 { memarg } => {
+            Operator::I32AtomicStore {
+                memarg,
+            }
+            | Operator::I32AtomicStore16 {
+                memarg,
+            }
+            | Operator::I32AtomicStore8 {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I64AtomicStore { memarg }
-            | Operator::I64AtomicStore32 { memarg }
-            | Operator::I64AtomicStore16 { memarg }
-            | Operator::I64AtomicStore8 { memarg } => {
+            Operator::I64AtomicStore {
+                memarg,
+            }
+            | Operator::I64AtomicStore32 {
+                memarg,
+            }
+            | Operator::I64AtomicStore16 {
+                memarg,
+            }
+            | Operator::I64AtomicStore8 {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::I32AtomicRmwAdd { memarg }
-            | Operator::I32AtomicRmwSub { memarg }
-            | Operator::I32AtomicRmwAnd { memarg }
-            | Operator::I32AtomicRmwOr { memarg }
-            | Operator::I32AtomicRmwXor { memarg }
-            | Operator::I32AtomicRmw16AddU { memarg }
-            | Operator::I32AtomicRmw16SubU { memarg }
-            | Operator::I32AtomicRmw16AndU { memarg }
-            | Operator::I32AtomicRmw16OrU { memarg }
-            | Operator::I32AtomicRmw16XorU { memarg }
-            | Operator::I32AtomicRmw8AddU { memarg }
-            | Operator::I32AtomicRmw8SubU { memarg }
-            | Operator::I32AtomicRmw8AndU { memarg }
-            | Operator::I32AtomicRmw8OrU { memarg }
-            | Operator::I32AtomicRmw8XorU { memarg } => {
+            Operator::I32AtomicRmwAdd {
+                memarg,
+            }
+            | Operator::I32AtomicRmwSub {
+                memarg,
+            }
+            | Operator::I32AtomicRmwAnd {
+                memarg,
+            }
+            | Operator::I32AtomicRmwOr {
+                memarg,
+            }
+            | Operator::I32AtomicRmwXor {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16AddU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16SubU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16AndU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16OrU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16XorU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8AddU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8SubU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8AndU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8OrU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8XorU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I64AtomicRmwAdd { memarg }
-            | Operator::I64AtomicRmwSub { memarg }
-            | Operator::I64AtomicRmwAnd { memarg }
-            | Operator::I64AtomicRmwOr { memarg }
-            | Operator::I64AtomicRmwXor { memarg }
-            | Operator::I64AtomicRmw32AddU { memarg }
-            | Operator::I64AtomicRmw32SubU { memarg }
-            | Operator::I64AtomicRmw32AndU { memarg }
-            | Operator::I64AtomicRmw32OrU { memarg }
-            | Operator::I64AtomicRmw32XorU { memarg }
-            | Operator::I64AtomicRmw16AddU { memarg }
-            | Operator::I64AtomicRmw16SubU { memarg }
-            | Operator::I64AtomicRmw16AndU { memarg }
-            | Operator::I64AtomicRmw16OrU { memarg }
-            | Operator::I64AtomicRmw16XorU { memarg }
-            | Operator::I64AtomicRmw8AddU { memarg }
-            | Operator::I64AtomicRmw8SubU { memarg }
-            | Operator::I64AtomicRmw8AndU { memarg }
-            | Operator::I64AtomicRmw8OrU { memarg }
-            | Operator::I64AtomicRmw8XorU { memarg } => {
+            Operator::I64AtomicRmwAdd {
+                memarg,
+            }
+            | Operator::I64AtomicRmwSub {
+                memarg,
+            }
+            | Operator::I64AtomicRmwAnd {
+                memarg,
+            }
+            | Operator::I64AtomicRmwOr {
+                memarg,
+            }
+            | Operator::I64AtomicRmwXor {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32AddU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32SubU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32AndU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32OrU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32XorU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16AddU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16SubU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16AndU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16OrU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16XorU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8AddU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8SubU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8AndU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8OrU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8XorU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I32AtomicRmwXchg { memarg }
-            | Operator::I32AtomicRmw16XchgU { memarg }
-            | Operator::I32AtomicRmw8XchgU { memarg } => {
+            Operator::I32AtomicRmwXchg {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16XchgU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8XchgU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I32AtomicRmwCmpxchg { memarg }
-            | Operator::I32AtomicRmw16CmpxchgU { memarg }
-            | Operator::I32AtomicRmw8CmpxchgU { memarg } => {
+            Operator::I32AtomicRmwCmpxchg {
+                memarg,
+            }
+            | Operator::I32AtomicRmw16CmpxchgU {
+                memarg,
+            }
+            | Operator::I32AtomicRmw8CmpxchgU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I32))?;
@@ -1279,20 +1469,36 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I64AtomicRmwXchg { memarg }
-            | Operator::I64AtomicRmw32XchgU { memarg }
-            | Operator::I64AtomicRmw16XchgU { memarg }
-            | Operator::I64AtomicRmw8XchgU { memarg } => {
+            Operator::I64AtomicRmwXchg {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32XchgU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16XchgU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8XchgU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I64AtomicRmwCmpxchg { memarg }
-            | Operator::I64AtomicRmw32CmpxchgU { memarg }
-            | Operator::I64AtomicRmw16CmpxchgU { memarg }
-            | Operator::I64AtomicRmw8CmpxchgU { memarg } => {
+            Operator::I64AtomicRmwCmpxchg {
+                memarg,
+            }
+            | Operator::I64AtomicRmw32CmpxchgU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw16CmpxchgU {
+                memarg,
+            }
+            | Operator::I64AtomicRmw8CmpxchgU {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
@@ -1300,14 +1506,18 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::MemoryAtomicNotify { memarg } => {
+            Operator::MemoryAtomicNotify {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::MemoryAtomicWait32 { memarg } => {
+            Operator::MemoryAtomicWait32 {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
@@ -1315,7 +1525,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::MemoryAtomicWait64 { memarg } => {
+            Operator::MemoryAtomicWait64 {
+                memarg,
+            } => {
                 self.check_threads_enabled()?;
                 let ty = self.check_shared_memarg_wo_align(memarg, resources)?;
                 self.pop_operand(Some(Type::I64))?;
@@ -1323,7 +1535,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::AtomicFence { ref flags } => {
+            Operator::AtomicFence {
+                ref flags,
+            } => {
                 self.check_threads_enabled()?;
                 if *flags != 0 {
                     return Err(OperatorValidatorError::new(
@@ -1331,7 +1545,9 @@ impl OperatorValidator {
                     ));
                 }
             }
-            Operator::RefNull { ty } => {
+            Operator::RefNull {
+                ty,
+            } => {
                 self.check_reference_types_enabled()?;
                 match ty {
                     Type::FuncRef | Type::ExternRef => {}
@@ -1355,7 +1571,9 @@ impl OperatorValidator {
                 }
                 self.push_operand(Type::I32)?;
             }
-            Operator::RefFunc { function_index } => {
+            Operator::RefFunc {
+                function_index,
+            } => {
                 self.check_reference_types_enabled()?;
                 if resources.type_of_function(function_index).is_none() {
                     return Err(OperatorValidatorError::new(
@@ -1367,19 +1585,25 @@ impl OperatorValidator {
                 }
                 self.push_operand(Type::FuncRef)?;
             }
-            Operator::V128Load { memarg } => {
+            Operator::V128Load {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let ty = self.check_memarg(memarg, 4, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Store { memarg } => {
+            Operator::V128Store {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let ty = self.check_memarg(memarg, 4, resources)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::V128Const { .. } => {
+            Operator::V128Const {
+                ..
+            } => {
                 self.check_simd_enabled()?;
                 self.push_operand(Type::V128)?;
             }
@@ -1405,66 +1629,92 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::F64))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::I8x16ExtractLaneS { lane } | Operator::I8x16ExtractLaneU { lane } => {
+            Operator::I8x16ExtractLaneS {
+                lane,
+            }
+            | Operator::I8x16ExtractLaneU {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 16)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I16x8ExtractLaneS { lane } | Operator::I16x8ExtractLaneU { lane } => {
+            Operator::I16x8ExtractLaneS {
+                lane,
+            }
+            | Operator::I16x8ExtractLaneU {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 8)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I32x4ExtractLane { lane } => {
+            Operator::I32x4ExtractLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 4)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::I8x16ReplaceLane { lane } => {
+            Operator::I8x16ReplaceLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 16)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::I16x8ReplaceLane { lane } => {
+            Operator::I16x8ReplaceLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 8)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::I32x4ReplaceLane { lane } => {
+            Operator::I32x4ReplaceLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 4)?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::I64x2ExtractLane { lane } => {
+            Operator::I64x2ExtractLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 2)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::I64)?;
             }
-            Operator::I64x2ReplaceLane { lane } => {
+            Operator::I64x2ReplaceLane {
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 2)?;
                 self.pop_operand(Some(Type::I64))?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::F32x4ExtractLane { lane } => {
+            Operator::F32x4ExtractLane {
+                lane,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 4)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::F32)?;
             }
-            Operator::F32x4ReplaceLane { lane } => {
+            Operator::F32x4ReplaceLane {
+                lane,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 4)?;
@@ -1472,14 +1722,18 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::F64x2ExtractLane { lane } => {
+            Operator::F64x2ExtractLane {
+                lane,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 2)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::F64)?;
             }
-            Operator::F64x2ReplaceLane { lane } => {
+            Operator::F64x2ReplaceLane {
+                lane,
+            } => {
                 self.check_non_deterministic_enabled()?;
                 self.check_simd_enabled()?;
                 self.check_simd_lane_index(lane, 2)?;
@@ -1700,7 +1954,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::V128))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::I8x16Shuffle { ref lanes } => {
+            Operator::I8x16Shuffle {
+                ref lanes,
+            } => {
                 self.check_simd_enabled()?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(Type::V128))?;
@@ -1709,38 +1965,66 @@ impl OperatorValidator {
                 }
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load8Splat { memarg } => {
+            Operator::V128Load8Splat {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let ty = self.check_memarg(memarg, 0, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load16Splat { memarg } => {
+            Operator::V128Load16Splat {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let ty = self.check_memarg(memarg, 1, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load32Splat { memarg } | Operator::V128Load32Zero { memarg } => {
+            Operator::V128Load32Splat {
+                memarg,
+            }
+            | Operator::V128Load32Zero {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let ty = self.check_memarg(memarg, 2, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load64Splat { memarg }
-            | Operator::V128Load64Zero { memarg }
-            | Operator::V128Load8x8S { memarg }
-            | Operator::V128Load8x8U { memarg }
-            | Operator::V128Load16x4S { memarg }
-            | Operator::V128Load16x4U { memarg }
-            | Operator::V128Load32x2S { memarg }
-            | Operator::V128Load32x2U { memarg } => {
+            Operator::V128Load64Splat {
+                memarg,
+            }
+            | Operator::V128Load64Zero {
+                memarg,
+            }
+            | Operator::V128Load8x8S {
+                memarg,
+            }
+            | Operator::V128Load8x8U {
+                memarg,
+            }
+            | Operator::V128Load16x4S {
+                memarg,
+            }
+            | Operator::V128Load16x4U {
+                memarg,
+            }
+            | Operator::V128Load32x2S {
+                memarg,
+            }
+            | Operator::V128Load32x2U {
+                memarg,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 3, resources)?;
                 self.pop_operand(Some(idx))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load8Lane { memarg, lane } => {
+            Operator::V128Load8Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 0, resources)?;
                 self.check_simd_lane_index(lane, 16)?;
@@ -1748,7 +2032,10 @@ impl OperatorValidator {
                 self.pop_operand(Some(idx))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load16Lane { memarg, lane } => {
+            Operator::V128Load16Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 1, resources)?;
                 self.check_simd_lane_index(lane, 8)?;
@@ -1756,7 +2043,10 @@ impl OperatorValidator {
                 self.pop_operand(Some(idx))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load32Lane { memarg, lane } => {
+            Operator::V128Load32Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 2, resources)?;
                 self.check_simd_lane_index(lane, 4)?;
@@ -1764,7 +2054,10 @@ impl OperatorValidator {
                 self.pop_operand(Some(idx))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Load64Lane { memarg, lane } => {
+            Operator::V128Load64Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 3, resources)?;
                 self.check_simd_lane_index(lane, 2)?;
@@ -1772,35 +2065,50 @@ impl OperatorValidator {
                 self.pop_operand(Some(idx))?;
                 self.push_operand(Type::V128)?;
             }
-            Operator::V128Store8Lane { memarg, lane } => {
+            Operator::V128Store8Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 0, resources)?;
                 self.check_simd_lane_index(lane, 16)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(idx))?;
             }
-            Operator::V128Store16Lane { memarg, lane } => {
+            Operator::V128Store16Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 1, resources)?;
                 self.check_simd_lane_index(lane, 8)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(idx))?;
             }
-            Operator::V128Store32Lane { memarg, lane } => {
+            Operator::V128Store32Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 2, resources)?;
                 self.check_simd_lane_index(lane, 4)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(idx))?;
             }
-            Operator::V128Store64Lane { memarg, lane } => {
+            Operator::V128Store64Lane {
+                memarg,
+                lane,
+            } => {
                 self.check_simd_enabled()?;
                 let idx = self.check_memarg(memarg, 3, resources)?;
                 self.check_simd_lane_index(lane, 2)?;
                 self.pop_operand(Some(Type::V128))?;
                 self.pop_operand(Some(idx))?;
             }
-            Operator::MemoryInit { mem, segment } => {
+            Operator::MemoryInit {
+                mem,
+                segment,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 let ty = self.check_memory_index(mem, resources)?;
                 if segment >= resources.data_count() {
@@ -1810,13 +2118,18 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::DataDrop { segment } => {
+            Operator::DataDrop {
+                segment,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 if segment >= resources.data_count() {
                     bail_op_err!("unknown data segment {}", segment);
                 }
             }
-            Operator::MemoryCopy { src, dst } => {
+            Operator::MemoryCopy {
+                src,
+                dst,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 let dst_ty = self.check_memory_index(dst, resources)?;
                 let src_ty = self.check_memory_index(src, resources)?;
@@ -1827,14 +2140,19 @@ impl OperatorValidator {
                 self.pop_operand(Some(src_ty))?;
                 self.pop_operand(Some(dst_ty))?;
             }
-            Operator::MemoryFill { mem } => {
+            Operator::MemoryFill {
+                mem,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 let ty = self.check_memory_index(mem, resources)?;
                 self.pop_operand(Some(ty))?;
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(ty))?;
             }
-            Operator::TableInit { segment, table } => {
+            Operator::TableInit {
+                segment,
+                table,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 if table > 0 {
                     self.check_reference_types_enabled()?;
@@ -1857,13 +2175,12 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(Type::I32))?;
             }
-            Operator::ElemDrop { segment } => {
+            Operator::ElemDrop {
+                segment,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 if segment >= resources.element_count() {
-                    bail_op_err!(
-                        "unknown elem segment {}: segment index out of bounds",
-                        segment
-                    );
+                    bail_op_err!("unknown elem segment {}: segment index out of bounds", segment);
                 }
             }
             Operator::TableCopy {
@@ -1886,7 +2203,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::I32))?;
                 self.pop_operand(Some(Type::I32))?;
             }
-            Operator::TableGet { table } => {
+            Operator::TableGet {
+                table,
+            } => {
                 self.check_reference_types_enabled()?;
                 let ty = match resources.table_at(table) {
                     Some(ty) => ty.element_type,
@@ -1895,7 +2214,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(Type::I32))?;
                 self.push_operand(ty)?;
             }
-            Operator::TableSet { table } => {
+            Operator::TableSet {
+                table,
+            } => {
                 self.check_reference_types_enabled()?;
                 let ty = match resources.table_at(table) {
                     Some(ty) => ty.element_type,
@@ -1904,7 +2225,9 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.pop_operand(Some(Type::I32))?;
             }
-            Operator::TableGrow { table } => {
+            Operator::TableGrow {
+                table,
+            } => {
                 self.check_reference_types_enabled()?;
                 let ty = match resources.table_at(table) {
                     Some(ty) => ty.element_type,
@@ -1914,14 +2237,18 @@ impl OperatorValidator {
                 self.pop_operand(Some(ty))?;
                 self.push_operand(Type::I32)?;
             }
-            Operator::TableSize { table } => {
+            Operator::TableSize {
+                table,
+            } => {
                 self.check_reference_types_enabled()?;
                 if resources.table_at(table).is_none() {
                     return Err(OperatorValidatorError::new("table index out of bounds"));
                 }
                 self.push_operand(Type::I32)?;
             }
-            Operator::TableFill { table } => {
+            Operator::TableFill {
+                table,
+            } => {
                 self.check_bulk_memory_enabled()?;
                 let ty = match resources.table_at(table) {
                     Some(ty) => ty.element_type,
@@ -1972,6 +2299,7 @@ where
     B: Iterator<Item = A::Item>,
 {
     type Item = A::Item;
+
     fn next(&mut self) -> Option<A::Item> {
         match self {
             Either::A(a) => a.next(),

@@ -25,15 +25,15 @@
 
 use anyhow::{bail, Context, Result};
 use rayon::prelude::*;
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::str;
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+    str,
+    sync::atomic::{AtomicUsize, Ordering::SeqCst},
+};
 use wasmparser::*;
-use wast::parser::ParseBuffer;
-use wast::*;
+use wast::{parser::ParseBuffer, *};
 
 fn main() {
     let tests = find_tests();
@@ -74,10 +74,7 @@ fn main() {
         panic!("{} tests failed", errors.len())
     }
 
-    println!(
-        "test result: ok. {} directives passed\n",
-        state.ntests.load(SeqCst)
-    );
+    println!("test result: ok. {} directives passed\n", state.ntests.load(SeqCst));
 }
 
 /// Recursively finds all tests in a whitelisted set of directories which we
@@ -188,12 +185,12 @@ fn skip_test(test: &Path, contents: &[u8]) -> bool {
 
 #[derive(Default)]
 struct TestState {
-    ntests: AtomicUsize,
+    ntests:         AtomicUsize,
     wabt_available: AtomicUsize,
 }
 
 struct Wast2Json {
-    _td: tempfile::TempDir,
+    _td:     tempfile::TempDir,
     modules: Vec<PathBuf>,
 }
 
@@ -266,8 +263,7 @@ impl TestState {
             return Ok(());
         }
 
-        self.test_wasm_valid(test, contents)
-            .context("wasm isn't valid")?;
+        self.test_wasm_valid(test, contents).context("wasm isn't valid")?;
 
         // Test that we can print these bytes, and if available make sure it
         // matches wabt.
@@ -360,12 +356,7 @@ impl TestState {
                 let (line, col) = directive.span().linecol_in(contents);
                 self.test_wast_directive(test, directive, expected)
                     .with_context(|| {
-                        format!(
-                            "failed directive on {}:{}:{}",
-                            test.display(),
-                            line + 1,
-                            col + 1
-                        )
+                        format!("failed directive on {}:{}:{}", test.display(), line + 1, col + 1)
                     })
                     .err()
             })
@@ -424,7 +415,10 @@ impl TestState {
                     .context("failed testing wasm binary produced by `wast`")?;
             }
 
-            WastDirective::QuoteModule { source, span: _ } => {
+            WastDirective::QuoteModule {
+                source,
+                span: _,
+            } => {
                 if skip_verify {
                     return Ok(());
                 }
@@ -441,10 +435,9 @@ impl TestState {
                 }
                 let result = self.parse_quote_module(test, &source);
                 match result {
-                    Ok(()) => bail!(
-                        "parsed successfully but should have failed with: {}",
-                        message,
-                    ),
+                    Ok(()) => {
+                        bail!("parsed successfully but should have failed with: {}", message,)
+                    }
                     Err(e) => {
                         if error_matches(&format!("{:?}", e), message) {
                             self.bump_ntests();
@@ -466,11 +459,7 @@ impl TestState {
                 }
                 let e = self.test_wasm_invalid(test, &wasm)?;
                 if !error_matches(e.message(), message) {
-                    bail!(
-                        "expected \"{spec}\", got \"{actual}\"",
-                        spec = message,
-                        actual = e,
-                    );
+                    bail!("expected \"{spec}\", got \"{actual}\"", spec = message, actual = e,);
                 }
             }
 
@@ -657,14 +646,20 @@ impl TestState {
             loop {
                 let start = offset;
                 let payload = match p.parse(&bytes[offset..], true) {
-                    Ok(Chunk::Parsed { consumed, payload }) => {
+                    Ok(Chunk::Parsed {
+                        consumed,
+                        payload,
+                    }) => {
                         offset += consumed;
                         payload
                     }
                     _ => break,
                 };
                 match payload {
-                    Payload::CustomSection { name: "name", .. } => {
+                    Payload::CustomSection {
+                        name: "name",
+                        ..
+                    } => {
                         let mut bytes = bytes.to_vec();
                         bytes.drain(start..offset);
                         return bytes;
@@ -679,17 +674,17 @@ impl TestState {
 
     fn wasmparser_validator_for(&self, test: &Path) -> Validator {
         let mut features = WasmFeatures {
-            threads: true,
-            reference_types: true,
-            simd: true,
-            exceptions: true,
-            bulk_memory: true,
-            tail_call: true,
-            module_linking: false,
+            threads:            true,
+            reference_types:    true,
+            simd:               true,
+            exceptions:         true,
+            bulk_memory:        true,
+            tail_call:          true,
+            module_linking:     false,
             deterministic_only: false,
-            multi_value: true,
-            multi_memory: true,
-            memory64: true,
+            multi_value:        true,
+            multi_memory:       true,
+            memory64:           true,
         };
         for part in test.iter().filter_map(|t| t.to_str()) {
             match part {
@@ -726,9 +721,7 @@ impl TestState {
         return ret;
     }
 
-    fn bump_ntests(&self) {
-        self.ntests.fetch_add(1, SeqCst);
-    }
+    fn bump_ntests(&self) { self.ntests.fetch_add(1, SeqCst); }
 
     fn wat2wasm(&self, test: &Path) -> Result<Option<Vec<u8>>> {
         if !self.wabt_available()? {
@@ -768,9 +761,7 @@ impl TestState {
             .output()
             .context("failed to spawn `wasm2wat`")?;
         if result.status.success() {
-            Ok(Some(
-                fs::read_to_string(&wat).context("failed to read wat file")?,
-            ))
+            Ok(Some(fs::read_to_string(&wat).context("failed to read wat file")?))
         } else {
             bail!(
                 "failed to run wasm2wat: {}\n\n    {}",
@@ -810,7 +801,10 @@ impl TestState {
                 }
             })
             .collect();
-        Ok(Some(Wast2Json { _td: td, modules }))
+        Ok(Some(Wast2Json {
+            _td: td,
+            modules,
+        }))
     }
 
     fn wabt_available(&self) -> Result<bool> {
@@ -824,20 +818,16 @@ impl TestState {
         // ... otherwise figure it out ourselves and try to be the singular
         // thread which flags whether wabt is here or not.
         let available = Command::new("wasm2wat").arg("--version").output().is_ok() as usize + 1;
-        if self
-            .wabt_available
-            .compare_exchange(0, available, SeqCst, SeqCst)
-            .is_ok()
-        {
+        if self.wabt_available.compare_exchange(0, available, SeqCst, SeqCst).is_ok() {
             // If we were the singular thread to indicate whether we know wabt
             // is available or not, then we also return an error if it's
             // supposed to be available and it's not.
             if available == 1 && env::var("SKIP_WABT").is_err() {
                 bail!(
                     "\
-                        failed to locate `wabt` tools as a reference to run tests \
-                        against; you either install wabt from the `tests/wabt` \
-                        directory or set the SKIP_WABT=1 env var to fix this
+                        failed to locate `wabt` tools as a reference to run tests against; you \
+                     either install wabt from the `tests/wabt` directory or set the SKIP_WABT=1 \
+                     env var to fix this
                     "
                 )
             }

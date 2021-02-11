@@ -14,28 +14,35 @@ impl<'a> Parse<'a> for Comments<'a> {
                     None => break,
                 };
                 cursor = c;
-                comments.push(if comment.starts_with(";;") {
-                    &comment[2..]
-                } else {
-                    &comment[2..comment.len() - 2]
-                });
+                comments.push(
+                    if comment.starts_with(";;") {
+                        &comment[2..]
+                    } else {
+                        &comment[2..comment.len() - 2]
+                    },
+                );
             }
             Ok((comments, cursor))
         })?;
-        Ok(Comments { comments })
+        Ok(Comments {
+            comments,
+        })
     }
 }
 
 pub struct Documented<'a, T> {
     comments: Comments<'a>,
-    item: T,
+    item:     T,
 }
 
 impl<'a, T: Parse<'a>> Parse<'a> for Documented<'a, T> {
     fn parse(parser: Parser<'a>) -> Result<Self> {
         let comments = parser.parse()?;
         let item = parser.parens(T::parse)?;
-        Ok(Documented { comments, item })
+        Ok(Documented {
+            comments,
+            item,
+        })
     }
 }
 
@@ -67,10 +74,7 @@ multiple;)
     )?;
 
     let d: Documented<wast::Func> = parser::parse(&buf)?;
-    assert_eq!(
-        d.comments.comments,
-        vec![" this", " is\non\nmultiple", " lines"]
-    );
+    assert_eq!(d.comments.comments, vec![" this", " is\non\nmultiple", " lines"]);
     drop(d.item);
     Ok(())
 }

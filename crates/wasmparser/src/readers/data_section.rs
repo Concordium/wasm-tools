@@ -29,14 +29,14 @@ pub enum DataKind<'a> {
     Passive,
     Active {
         memory_index: u32,
-        init_expr: InitExpr<'a>,
+        init_expr:    InitExpr<'a>,
     },
 }
 
 #[derive(Clone)]
 pub struct DataSectionReader<'a> {
-    reader: BinaryReader<'a>,
-    count: u32,
+    reader:             BinaryReader<'a>,
+    count:              u32,
     forbid_bulk_memory: bool,
 }
 
@@ -51,17 +51,11 @@ impl<'a> DataSectionReader<'a> {
         })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
-    pub fn forbid_bulk_memory(&mut self, forbid: bool) {
-        self.forbid_bulk_memory = forbid;
-    }
+    pub fn forbid_bulk_memory(&mut self, forbid: bool) { self.forbid_bulk_memory = forbid; }
 
     fn verify_data_end(&self, end: usize) -> Result<()> {
         if self.reader.buffer.len() < end {
@@ -77,14 +71,18 @@ impl<'a> DataSectionReader<'a> {
     ///
     /// # Examples
     /// ```
-    /// use wasmparser::{DataSectionReader, DataKind};
+    /// use wasmparser::{DataKind, DataSectionReader};
     /// # let data: &[u8] = &[
     /// #     0x01, 0x00, 0x41, 0x80, 0x08, 0x0b, 0x04, 0x00, 0x00, 0x00, 0x00];
     /// let mut data_reader = DataSectionReader::new(data, 0).unwrap();
     /// for _ in 0..data_reader.get_count() {
     ///     let data = data_reader.read().expect("data");
     ///     println!("Data: {:?}", data);
-    ///     if let DataKind::Active { init_expr, .. } = data.kind {
+    ///     if let DataKind::Active {
+    ///         init_expr,
+    ///         ..
+    ///     } = data.kind
+    ///     {
     ///         let mut init_expr_reader = init_expr.get_binary_reader();
     ///         let op = init_expr_reader.read_operator().expect("op");
     ///         println!("Init const: {:?}", op);
@@ -93,8 +91,7 @@ impl<'a> DataSectionReader<'a> {
     /// ```
     pub fn read<'b>(&mut self) -> Result<Data<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let flags = self.reader.read_var_u32()?;
         let kind = if !self.forbid_bulk_memory && flags == 1 {
             DataKind::Passive
@@ -126,37 +123,32 @@ impl<'a> DataSectionReader<'a> {
         self.verify_data_end(data_end)?;
         let data = &self.reader.buffer[self.reader.position..data_end];
         self.reader.skip_to(data_end);
-        Ok(Data { kind, data })
+        Ok(Data {
+            kind,
+            data,
+        })
     }
 }
 
 impl<'a> SectionReader for DataSectionReader<'a> {
     type Item = Data<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        DataSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        DataSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { DataSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { DataSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for DataSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        DataSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { DataSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for DataSectionReader<'a> {
-    type Item = Result<Data<'a>>;
     type IntoIter = SectionIteratorLimited<DataSectionReader<'a>>;
+    type Item = Result<Data<'a>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

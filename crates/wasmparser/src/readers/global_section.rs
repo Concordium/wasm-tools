@@ -20,30 +20,29 @@ use super::{
 
 #[derive(Debug, Copy, Clone)]
 pub struct Global<'a> {
-    pub ty: GlobalType,
+    pub ty:        GlobalType,
     pub init_expr: InitExpr<'a>,
 }
 
 #[derive(Clone)]
 pub struct GlobalSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> GlobalSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<GlobalSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(GlobalSectionReader { reader, count })
+        Ok(GlobalSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the global section.
     ///
@@ -62,44 +61,38 @@ impl<'a> GlobalSectionReader<'a> {
     /// ```
     pub fn read<'b>(&mut self) -> Result<Global<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let ty = self.reader.read_global_type()?;
         let expr_offset = self.reader.position;
         self.reader.skip_init_expr()?;
         let data = &self.reader.buffer[expr_offset..self.reader.position];
         let init_expr = InitExpr::new(data, self.reader.original_offset + expr_offset);
-        Ok(Global { ty, init_expr })
+        Ok(Global {
+            ty,
+            init_expr,
+        })
     }
 }
 
 impl<'a> SectionReader for GlobalSectionReader<'a> {
     type Item = Global<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        GlobalSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        GlobalSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { GlobalSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { GlobalSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for GlobalSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        GlobalSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { GlobalSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for GlobalSectionReader<'a> {
-    type Item = Result<Global<'a>>;
     type IntoIter = SectionIteratorLimited<GlobalSectionReader<'a>>;
+    type Item = Result<Global<'a>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

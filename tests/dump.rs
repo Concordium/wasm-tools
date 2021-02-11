@@ -6,8 +6,10 @@
 
 use anyhow::{bail, Context, Result};
 use rayon::prelude::*;
-use std::env;
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 fn main() {
     let mut tests = Vec::new();
@@ -31,10 +33,8 @@ fn main() {
 
     println!("running {} tests\n", tests.len());
 
-    let errors = tests
-        .par_iter()
-        .filter_map(|test| run_test(test, bless).err())
-        .collect::<Vec<_>>();
+    let errors =
+        tests.par_iter().filter_map(|test| run_test(test, bless).err()).collect::<Vec<_>>();
 
     if !errors.is_empty() {
         for msg in errors.iter() {
@@ -58,9 +58,7 @@ fn run_test(test: &Path, bless: bool) -> Result<()> {
     }
 
     // Ignore CRLF line ending and force always `\n`
-    let assert = std::fs::read_to_string(assert)
-        .unwrap_or(String::new())
-        .replace("\r\n", "\n");
+    let assert = std::fs::read_to_string(assert).unwrap_or(String::new()).replace("\r\n", "\n");
 
     let mut bad = false;
     let mut result = String::new();
@@ -84,11 +82,7 @@ fn run_test(test: &Path, bless: bool) -> Result<()> {
         result.push_str("\n");
     }
     if bad {
-        bail!(
-            "expected != actual for test `{}`\n\n{}",
-            test.display(),
-            result
-        );
+        bail!("expected != actual for test `{}`\n\n{}", test.display(), result);
     } else {
         Ok(())
     }

@@ -61,14 +61,8 @@ fn local_annotations() -> anyhow::Result<()> {
     assert_local_name("foo", r#"(module (func (local (@name "foo") i32)))"#)?;
     assert_local_name("foo", r#"(module (func (param $bar (@name "foo") i32)))"#)?;
     assert_local_name("foo", r#"(module (func (local $bar (@name "foo") i32)))"#)?;
-    assert_local_name(
-        "foo bar",
-        r#"(module (func (param $bar (@name "foo bar") i32)))"#,
-    )?;
-    assert_local_name(
-        "foo bar",
-        r#"(module (func (local $bar (@name "foo bar") i32)))"#,
-    )?;
+    assert_local_name("foo bar", r#"(module (func (param $bar (@name "foo bar") i32)))"#)?;
+    assert_local_name("foo bar", r#"(module (func (local $bar (@name "foo bar") i32)))"#)?;
     Ok(())
 }
 
@@ -137,9 +131,7 @@ fn custom_section_order() -> anyhow::Result<()> {
             }
         };
     }
-    let wasm = Parser::new(0)
-        .parse_all(&wasm)
-        .collect::<Result<Vec<_>>>()?;
+    let wasm = Parser::new(0).parse_all(&wasm).collect::<Result<Vec<_>>>()?;
     assert_matches!(wasm[0], Payload::Version { .. });
     assert_matches!(wasm[1], Payload::CustomSection { name: "K", .. });
     assert_matches!(wasm[2], Payload::CustomSection { name: "F", .. });

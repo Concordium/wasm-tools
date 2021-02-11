@@ -5,14 +5,12 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{
-///     Export, ExportSection, TableSection, TableType, Limits, Module, ValType,
-/// };
+/// use wasm_encoder::{Export, ExportSection, Limits, Module, TableSection, TableType, ValType};
 ///
 /// let mut tables = TableSection::new();
 /// tables.table(TableType {
 ///     element_type: ValType::FuncRef,
-///     limits: Limits {
+///     limits:       Limits {
 ///         min: 128,
 ///         max: None,
 ///     },
@@ -22,14 +20,12 @@ use super::*;
 /// exports.export("my-table", Export::Table(0));
 ///
 /// let mut module = Module::new();
-/// module
-///     .section(&tables)
-///     .section(&exports);
+/// module.section(&tables).section(&exports);
 ///
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct ExportSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -37,7 +33,7 @@ impl ExportSection {
     /// Create a new export section encoder.
     pub fn new() -> ExportSection {
         ExportSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -52,14 +48,11 @@ impl ExportSection {
 }
 
 impl Section for ExportSection {
-    fn id(&self) -> u8 {
-        SectionId::Export.into()
-    }
+    fn id(&self) -> u8 { SectionId::Export.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(
@@ -133,9 +126,9 @@ impl Export {
 #[repr(u8)]
 pub enum ItemKind {
     Function = 0x00,
-    Table = 0x01,
-    Memory = 0x02,
-    Global = 0x03,
-    Module = 0x05,
+    Table    = 0x01,
+    Memory   = 0x02,
+    Global   = 0x03,
+    Module   = 0x05,
     Instance = 0x06,
 }

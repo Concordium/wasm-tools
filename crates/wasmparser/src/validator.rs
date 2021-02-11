@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-use crate::limits::*;
-use crate::ResizableLimits64;
-use crate::WasmModuleResources;
-use crate::{Alias, ExternalKind, Import, ImportSectionEntryType};
-use crate::{BinaryReaderError, EventType, GlobalType, MemoryType, Range, Result, TableType, Type};
-use crate::{DataKind, ElementItem, ElementKind, InitExpr, Instance, Operator};
-use crate::{FuncType, ResizableLimits, SectionReader, SectionWithLimitedItems};
-use crate::{FunctionBody, Parser, Payload};
-use std::collections::{HashMap, HashSet};
-use std::mem;
-use std::sync::Arc;
+use crate::{
+    limits::*, Alias, BinaryReaderError, DataKind, ElementItem, ElementKind, EventType,
+    ExternalKind, FuncType, FunctionBody, GlobalType, Import, ImportSectionEntryType, InitExpr,
+    Instance, MemoryType, Operator, Parser, Payload, Range, ResizableLimits, ResizableLimits64,
+    Result, SectionReader, SectionWithLimitedItems, TableType, Type, WasmModuleResources,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+    sync::Arc,
+};
 
 /// Test whether the given buffer contains a valid WebAssembly module,
 /// analogous to [`WebAssembly.validate`][js] in the JS API.
@@ -36,9 +36,7 @@ use std::sync::Arc;
 /// documentation of [`Validator`].
 ///
 /// [js]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/validate
-pub fn validate(bytes: &[u8]) -> Result<()> {
-    Validator::new().validate_all(bytes)
-}
+pub fn validate(bytes: &[u8]) -> Result<()> { Validator::new().validate_all(bytes) }
 
 #[test]
 fn test_validate() {
@@ -100,9 +98,10 @@ pub struct Validator {
 struct Module {
     /// Internal state that is incrementally built-up for the module being
     /// validate. This houses type information for all wasm items, like
-    /// functions. Note that this starts out as a solely owned `Arc<T>` so we can
-    /// get mutable access, but after we get to the code section this is never
-    /// mutated to we can clone it cheaply and hand it to sub-validators.
+    /// functions. Note that this starts out as a solely owned `Arc<T>` so we
+    /// can get mutable access, but after we get to the code section this is
+    /// never mutated to we can clone it cheaply and hand it to
+    /// sub-validators.
     state: arc::MaybeOwned<ModuleState>,
 
     /// Where we are, order-wise, in the wasm binary.
@@ -132,17 +131,17 @@ struct ModuleState {
     /// of functions while the main module is possibly still being parsed.
     all_types: Option<Arc<SnapshotList<TypeDef>>>,
 
-    types: Vec<usize>, // pointer into `validator.types`
-    tables: Vec<TableType>,
-    memories: Vec<MemoryType>,
-    globals: Vec<GlobalType>,
-    element_types: Vec<Type>,
-    data_count: Option<u32>,
-    code_type_indexes: Vec<u32>, // pointer into `types` above
-    func_types: Vec<usize>,      // pointer into `validator.types`
-    events: Vec<usize>,          // pointer into `validator.types`
-    submodules: Vec<usize>,      // pointer into `validator.types`
-    instances: Vec<usize>,       // pointer into `validator.types`
+    types:               Vec<usize>, // pointer into `validator.types`
+    tables:              Vec<TableType>,
+    memories:            Vec<MemoryType>,
+    globals:             Vec<GlobalType>,
+    element_types:       Vec<Type>,
+    data_count:          Option<u32>,
+    code_type_indexes:   Vec<u32>,   // pointer into `types` above
+    func_types:          Vec<usize>, // pointer into `validator.types`
+    events:              Vec<usize>, // pointer into `validator.types`
+    submodules:          Vec<usize>, // pointer into `validator.types`
+    instances:           Vec<usize>, // pointer into `validator.types`
     function_references: HashSet<u32>,
 
     // This is populated when we hit the export section
@@ -184,15 +183,15 @@ impl Default for WasmFeatures {
     fn default() -> WasmFeatures {
         WasmFeatures {
             // off-by-default features
-            reference_types: false,
-            module_linking: false,
-            simd: false,
-            threads: false,
-            tail_call: false,
-            bulk_memory: false,
-            multi_memory: false,
-            exceptions: false,
-            memory64: false,
+            reference_types:    false,
+            module_linking:     false,
+            simd:               false,
+            threads:            false,
+            tail_call:          false,
+            bulk_memory:        false,
+            multi_memory:       false,
+            exceptions:         false,
+            memory64:           false,
             deterministic_only: cfg!(feature = "deterministic"),
 
             // on-by-default features
@@ -222,9 +221,7 @@ enum Order {
 }
 
 impl Default for Order {
-    fn default() -> Order {
-        Order::Initial
-    }
+    fn default() -> Order { Order::Initial }
 }
 
 enum TypeDef {
@@ -296,9 +293,7 @@ impl Validator {
     /// The new validator will receive payloads parsed from
     /// [`Parser`], and expects the first payload received to be
     /// the version header from the parser.
-    pub fn new() -> Validator {
-        Validator::default()
-    }
+    pub fn new() -> Validator { Validator::default() }
 
     /// Configures the enabled WebAssembly features for this `Validator`.
     pub fn wasm_features(&mut self, features: WasmFeatures) -> &mut Validator {
@@ -343,7 +338,10 @@ impl Validator {
     pub fn payload<'a>(&mut self, payload: &Payload<'a>) -> Result<ValidPayload<'a>> {
         use crate::Payload::*;
         match payload {
-            Version { num, range } => self.version(*num, range)?,
+            Version {
+                num,
+                range,
+            } => self.version(*num, range)?,
             TypeSection(s) => self.type_section(s)?,
             ImportSection(s) => self.import_section(s)?,
             AliasSection(s) => self.alias_section(s)?,
@@ -354,9 +352,15 @@ impl Validator {
             EventSection(s) => self.event_section(s)?,
             GlobalSection(s) => self.global_section(s)?,
             ExportSection(s) => self.export_section(s)?,
-            StartSection { func, range } => self.start_section(*func, range)?,
+            StartSection {
+                func,
+                range,
+            } => self.start_section(*func, range)?,
             ElementSection(s) => self.element_section(s)?,
-            DataCountSection { count, range } => self.data_count_section(*count, range)?,
+            DataCountSection {
+                count,
+                range,
+            } => self.data_count_section(*count, range)?,
             CodeSectionStart {
                 count,
                 range,
@@ -374,9 +378,18 @@ impl Validator {
             DataSection(s) => self.data_section(s)?,
             End => self.end()?,
 
-            CustomSection { .. } => {} // no validation for custom sections
-            UnknownSection { id, range, .. } => self.unknown_section(*id, range)?,
-            ModuleSectionEntry { parser, .. } => {
+            CustomSection {
+                ..
+            } => {} // no validation for custom sections
+            UnknownSection {
+                id,
+                range,
+                ..
+            } => self.unknown_section(*id, range)?,
+            ModuleSectionEntry {
+                parser,
+                ..
+            } => {
                 self.module_section_entry();
                 return Ok(ValidPayload::Submodule(parser.clone()));
             }
@@ -441,10 +454,9 @@ impl Validator {
     fn get_memory(&self, idx: u32) -> Result<&MemoryType> {
         match self.cur.state.memories.get(idx as usize) {
             Some(t) => Ok(t),
-            None => self.create_error(format!(
-                "unknown memory {}: memory index out of bounds",
-                idx,
-            )),
+            None => {
+                self.create_error(format!("unknown memory {}: memory index out of bounds", idx,))
+            }
         }
     }
 
@@ -458,10 +470,8 @@ impl Validator {
     fn get_func_type(&self, func_idx: u32) -> Result<&FuncType> {
         match self.cur.state.func_types.get(func_idx as usize) {
             Some(t) => Ok(self.types[*t].unwrap_func()),
-            None => self.create_error(format!(
-                "unknown function {}: func index out of bounds",
-                func_idx,
-            )),
+            None => self
+                .create_error(format!("unknown function {}: func index out of bounds", func_idx,)),
         }
     }
 
@@ -510,10 +520,8 @@ impl Validator {
     }
 
     fn check_max(&self, cur_len: usize, amt_added: u32, max: usize, desc: &str) -> Result<()> {
-        let overflow = max
-            .checked_sub(cur_len)
-            .and_then(|amt| amt.checked_sub(amt_added as usize))
-            .is_none();
+        let overflow =
+            max.checked_sub(cur_len).and_then(|amt| amt.checked_sub(amt_added as usize)).is_none();
         if overflow {
             return if max == 1 {
                 self.create_error(format!("multiple {}", desc))
@@ -531,8 +539,7 @@ impl Validator {
         mut validate_item: impl FnMut(&mut Self, T::Item) -> Result<()>,
     ) -> Result<()>
     where
-        T: SectionReader + Clone + SectionWithLimitedItems,
-    {
+        T: SectionReader + Clone + SectionWithLimitedItems, {
         self.offset = section.range().start;
         self.update_order(order)?;
 
@@ -550,12 +557,7 @@ impl Validator {
     /// Validates [`Payload::TypeSection`](crate::Payload)
     pub fn type_section(&mut self, section: &crate::TypeSectionReader<'_>) -> Result<()> {
         let order = self.header_order(Order::Type);
-        self.check_max(
-            self.cur.state.types.len(),
-            section.get_count(),
-            MAX_WASM_TYPES,
-            "types",
-        )?;
+        self.check_max(self.cur.state.types.len(), section.get_count(), MAX_WASM_TYPES, "types")?;
         self.section(order, section, |me, item| me.type_def(item))
     }
 
@@ -578,14 +580,7 @@ impl Validator {
                 let mut imports = NameSet::default();
                 for i in t.imports.iter() {
                     let ty = self.import_entry_type(&i.ty)?;
-                    imports.push(
-                        self.offset,
-                        i.module,
-                        i.field,
-                        ty,
-                        &mut self.types,
-                        "import",
-                    )?;
+                    imports.push(self.offset, i.module, i.field, ty, &mut self.types, "import")?;
                 }
 
                 let mut exports = NameSet::default();
@@ -640,9 +635,7 @@ impl Validator {
             }
             ImportSectionEntryType::Event(t) => {
                 self.event_type(t)?;
-                Ok(EntityType::Event(
-                    self.cur.state.types[t.type_index as usize],
-                ))
+                Ok(EntityType::Event(self.cur.state.types[t.type_index as usize]))
             }
             ImportSectionEntryType::Global(t) => {
                 self.global_type(t)?;
@@ -650,15 +643,11 @@ impl Validator {
             }
             ImportSectionEntryType::Module(type_index) => {
                 self.module_type_at(*type_index)?;
-                Ok(EntityType::Module(
-                    self.cur.state.types[*type_index as usize],
-                ))
+                Ok(EntityType::Module(self.cur.state.types[*type_index as usize]))
             }
             ImportSectionEntryType::Instance(type_index) => {
                 self.instance_type_at(*type_index)?;
-                Ok(EntityType::Instance(
-                    self.cur.state.types[*type_index as usize],
-                ))
+                Ok(EntityType::Instance(self.cur.state.types[*type_index as usize]))
             }
         }
     }
@@ -682,7 +671,10 @@ impl Validator {
 
     fn memory_type(&self, ty: &MemoryType) -> Result<()> {
         match ty {
-            MemoryType::M32 { limits, shared } => {
+            MemoryType::M32 {
+                limits,
+                shared,
+            } => {
                 self.limits(limits)?;
                 let initial = limits.initial;
                 if initial as usize > MAX_WASM_MEMORY_PAGES {
@@ -702,7 +694,10 @@ impl Validator {
                     }
                 }
             }
-            MemoryType::M64 { limits, shared } => {
+            MemoryType::M64 {
+                limits,
+                shared,
+            } => {
                 if !self.features.memory64 {
                     return self.create_error("memory64 must be enabled for 64-bit memories");
                 }
@@ -737,9 +732,7 @@ impl Validator {
         Ok(())
     }
 
-    fn global_type(&self, ty: &GlobalType) -> Result<()> {
-        self.value_type(ty.content_type)
-    }
+    fn global_type(&self, ty: &GlobalType) -> Result<()> { self.value_type(ty.content_type) }
 
     fn limits(&self, limits: &ResizableLimits) -> Result<()> {
         if let Some(max) = limits.maximum {
@@ -847,12 +840,7 @@ impl Validator {
         }
         self.offset = range.start;
         self.update_order(Order::ModuleLinkingHeader)?;
-        self.check_max(
-            self.cur.state.submodules.len(),
-            count,
-            MAX_WASM_MODULES,
-            "modules",
-        )?;
+        self.check_max(self.cur.state.submodules.len(), count, MAX_WASM_MODULES, "modules")?;
         Ok(())
     }
 
@@ -1072,9 +1060,15 @@ impl Validator {
                     self.create_error("event type mismatch")
                 }
             }
-            EntityType::Memory(MemoryType::M32 { limits, shared }) => {
+            EntityType::Memory(MemoryType::M32 {
+                limits,
+                shared,
+            }) => {
                 let (b_limits, b_shared) = match b {
-                    EntityType::Memory(MemoryType::M32 { limits, shared }) => (limits, shared),
+                    EntityType::Memory(MemoryType::M32 {
+                        limits,
+                        shared,
+                    }) => (limits, shared),
                     _ => return self.create_error("item type mismatch"),
                 };
                 if limits_match!(limits, b_limits) && shared == b_shared {
@@ -1083,9 +1077,15 @@ impl Validator {
                     self.create_error("memory type mismatch")
                 }
             }
-            EntityType::Memory(MemoryType::M64 { limits, shared }) => {
+            EntityType::Memory(MemoryType::M64 {
+                limits,
+                shared,
+            }) => {
                 let (b_limits, b_shared) = match b {
-                    EntityType::Memory(MemoryType::M64 { limits, shared }) => (limits, shared),
+                    EntityType::Memory(MemoryType::M64 {
+                        limits,
+                        shared,
+                    }) => (limits, shared),
                     _ => return self.create_error("item type mismatch"),
                 };
                 if limits_match!(limits, b_limits) && shared == b_shared {
@@ -1240,20 +1240,32 @@ impl Validator {
         };
         self.offset = offset;
         let ty = match op {
-            Operator::I32Const { .. } => Type::I32,
-            Operator::I64Const { .. } => Type::I64,
-            Operator::F32Const { .. } => Type::F32,
-            Operator::F64Const { .. } => Type::F64,
-            Operator::RefNull { ty } => ty,
-            Operator::V128Const { .. } => Type::V128,
-            Operator::GlobalGet { global_index } => self.get_global(global_index)?.content_type,
-            Operator::RefFunc { function_index } => {
+            Operator::I32Const {
+                ..
+            } => Type::I32,
+            Operator::I64Const {
+                ..
+            } => Type::I64,
+            Operator::F32Const {
+                ..
+            } => Type::F32,
+            Operator::F64Const {
+                ..
+            } => Type::F64,
+            Operator::RefNull {
+                ty,
+            } => ty,
+            Operator::V128Const {
+                ..
+            } => Type::V128,
+            Operator::GlobalGet {
+                global_index,
+            } => self.get_global(global_index)?.content_type,
+            Operator::RefFunc {
+                function_index,
+            } => {
                 self.get_func_type(function_index)?;
-                self.cur
-                    .state
-                    .assert_mut()
-                    .function_references
-                    .insert(function_index);
+                self.cur.state.assert_mut().function_references.insert(function_index);
                 Type::FuncRef
             }
             Operator::End => return self.create_error("type mismatch: init_expr is empty"),
@@ -1273,8 +1285,10 @@ impl Validator {
             Some(Err(e)) => return Err(e),
             Some(Ok((Operator::End, _))) => {}
             Some(Ok(_)) => {
-                return self
-                    .create_error("constant expression required: type mismatch: only one init_expr operator is expected")
+                return self.create_error(
+                    "constant expression required: type mismatch: only one init_expr operator is \
+                     expected",
+                )
             }
             None => return self.create_error("type mismatch: init_expr is not terminated"),
         }
@@ -1325,11 +1339,7 @@ impl Validator {
         Ok(match kind {
             ExternalKind::Function => {
                 check("function", self.cur.state.func_types.len())?;
-                self.cur
-                    .state
-                    .assert_mut()
-                    .function_references
-                    .insert(index);
+                self.cur.state.assert_mut().function_references.insert(index);
                 EntityType::Func(self.cur.state.func_types[index as usize])
             }
             ExternalKind::Table => {
@@ -1472,8 +1482,9 @@ impl Validator {
     /// This function will prepare a [`FuncValidator`] which can be used to
     /// validate the function. The function body provided will be parsed only
     /// enough to create the function validation context. After this the
-    /// [`OperatorsReader`](crate::readers::OperatorsReader) returned can be used to read the
-    /// opcodes of the function as well as feed information into the validator.
+    /// [`OperatorsReader`](crate::readers::OperatorsReader) returned can be
+    /// used to read the opcodes of the function as well as feed information
+    /// into the validator.
     ///
     /// Note that the returned [`FuncValidator`] is "connected" to this
     /// [`Validator`] in that it uses the internal context of this validator for
@@ -1585,13 +1596,9 @@ pub struct ValidatorResources(Arc<ModuleState>);
 impl WasmModuleResources for ValidatorResources {
     type FuncType = crate::FuncType;
 
-    fn table_at(&self, at: u32) -> Option<TableType> {
-        self.0.tables.get(at as usize).cloned()
-    }
+    fn table_at(&self, at: u32) -> Option<TableType> { self.0.tables.get(at as usize).cloned() }
 
-    fn memory_at(&self, at: u32) -> Option<MemoryType> {
-        self.0.memories.get(at as usize).cloned()
-    }
+    fn memory_at(&self, at: u32) -> Option<MemoryType> { self.0.memories.get(at as usize).cloned() }
 
     fn event_at(&self, at: u32) -> Option<&Self::FuncType> {
         let types = self.0.all_types.as_ref().unwrap();
@@ -1602,9 +1609,7 @@ impl WasmModuleResources for ValidatorResources {
         }
     }
 
-    fn global_at(&self, at: u32) -> Option<GlobalType> {
-        self.0.globals.get(at as usize).cloned()
-    }
+    fn global_at(&self, at: u32) -> Option<GlobalType> { self.0.globals.get(at as usize).cloned() }
 
     fn func_type_at(&self, at: u32) -> Option<&Self::FuncType> {
         let types = self.0.all_types.as_ref().unwrap();
@@ -1628,26 +1633,19 @@ impl WasmModuleResources for ValidatorResources {
         self.0.element_types.get(at as usize).cloned()
     }
 
-    fn element_count(&self) -> u32 {
-        self.0.element_types.len() as u32
-    }
+    fn element_count(&self) -> u32 { self.0.element_types.len() as u32 }
 
-    fn data_count(&self) -> u32 {
-        self.0.data_count.unwrap_or(0)
-    }
+    fn data_count(&self) -> u32 { self.0.data_count.unwrap_or(0) }
 
-    fn is_function_referenced(&self, idx: u32) -> bool {
-        self.0.function_references.contains(&idx)
-    }
+    fn is_function_referenced(&self, idx: u32) -> bool { self.0.function_references.contains(&idx) }
 }
 
 mod arc {
-    use std::ops::Deref;
-    use std::sync::Arc;
+    use std::{ops::Deref, sync::Arc};
 
     pub struct MaybeOwned<T> {
         owned: bool,
-        arc: Arc<T>,
+        arc:   Arc<T>,
     }
 
     impl<T> MaybeOwned<T> {
@@ -1659,9 +1657,7 @@ mod arc {
             Some(unsafe { &mut *(&*self.arc as *const T as *mut T) })
         }
 
-        pub fn assert_mut(&mut self) -> &mut T {
-            self.as_mut().unwrap()
-        }
+        pub fn assert_mut(&mut self) -> &mut T { self.as_mut().unwrap() }
 
         pub fn arc(&mut self) -> &Arc<T> {
             self.owned = false;
@@ -1673,7 +1669,7 @@ mod arc {
         fn default() -> MaybeOwned<T> {
             MaybeOwned {
                 owned: true,
-                arc: Arc::default(),
+                arc:   Arc::default(),
             }
         }
     }
@@ -1681,9 +1677,7 @@ mod arc {
     impl<T> Deref for MaybeOwned<T> {
         type Target = T;
 
-        fn deref(&self) -> &T {
-            &self.arc
-        }
+        fn deref(&self) -> &T { &self.arc }
     }
 }
 
@@ -1694,7 +1688,7 @@ mod arc {
 /// single-level import of an instance, and that mapping happens here.
 #[derive(Default)]
 struct NameSet {
-    set: HashMap<String, EntityType>,
+    set:      HashMap<String, EntityType>,
     implicit: HashSet<String>,
 }
 
@@ -1759,10 +1753,7 @@ impl NameSet {
                 let prev = instance.exports.insert(name.to_string(), ty);
                 if prev.is_some() {
                     return Err(BinaryReaderError::new(
-                        format!(
-                            "duplicate {} name `{}::{}` already defined",
-                            desc, module, name
-                        ),
+                        format!("duplicate {} name `{}::{}` already defined", desc, module, name),
                         offset,
                     ));
                 }
@@ -1789,8 +1780,7 @@ impl NameSet {
                 instance.exports.insert(name.to_string(), ty);
                 types.push(TypeDef::Instance(instance));
                 assert!(self.implicit.insert(module.to_string()));
-                self.set
-                    .insert(module.to_string(), EntityType::Instance(idx));
+                self.set.insert(module.to_string(), EntityType::Instance(idx));
                 Ok(Some(idx))
             }
         }
@@ -1862,14 +1852,10 @@ impl<T> SnapshotList<T> {
     }
 
     /// Same as `Vec::push`
-    fn push(&mut self, val: T) {
-        self.cur.push(val);
-    }
+    fn push(&mut self, val: T) { self.cur.push(val); }
 
     /// Same as `<[T]>::len`
-    fn len(&self) -> usize {
-        self.cur.len() + self.snapshots_total
-    }
+    fn len(&self) -> usize { self.cur.len() + self.snapshots_total }
 
     /// Commits previously pushed types into this snapshot vector, and returns a
     /// clone of this list.
@@ -1885,14 +1871,13 @@ impl<T> SnapshotList<T> {
         let len = self.cur.len();
         if len > 0 {
             self.cur.shrink_to_fit();
-            self.snapshots
-                .push((self.snapshots_total, Arc::new(mem::take(&mut self.cur))));
+            self.snapshots.push((self.snapshots_total, Arc::new(mem::take(&mut self.cur))));
             self.snapshots_total += len;
         }
         SnapshotList {
-            snapshots: self.snapshots.clone(),
+            snapshots:       self.snapshots.clone(),
             snapshots_total: self.snapshots_total,
-            cur: Vec::new(),
+            cur:             Vec::new(),
         }
     }
 }
@@ -1900,23 +1885,19 @@ impl<T> SnapshotList<T> {
 impl<T> std::ops::Index<usize> for SnapshotList<T> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &T {
-        self.get(index).unwrap()
-    }
+    fn index(&self, index: usize) -> &T { self.get(index).unwrap() }
 }
 
 impl<T> std::ops::IndexMut<usize> for SnapshotList<T> {
-    fn index_mut(&mut self, index: usize) -> &mut T {
-        self.get_mut(index).unwrap()
-    }
+    fn index_mut(&mut self, index: usize) -> &mut T { self.get_mut(index).unwrap() }
 }
 
 impl<T> Default for SnapshotList<T> {
     fn default() -> SnapshotList<T> {
         SnapshotList {
-            snapshots: Vec::new(),
+            snapshots:       Vec::new(),
             snapshots_total: 0,
-            cur: Vec::new(),
+            cur:             Vec::new(),
         }
     }
 }

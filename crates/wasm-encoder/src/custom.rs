@@ -9,14 +9,11 @@ pub struct CustomSection<'a> {
 }
 
 impl Section for CustomSection<'_> {
-    fn id(&self) -> u8 {
-        SectionId::Custom.into()
-    }
+    fn id(&self) -> u8 { SectionId::Custom.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let name_len = encoders::u32(u32::try_from(self.name.len()).unwrap());
         let n = name_len.len();
 

@@ -21,23 +21,22 @@ use crate::{
 #[derive(Clone)]
 pub struct TypeSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> TypeSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<TypeSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(TypeSectionReader { reader, count })
+        Ok(TypeSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the type section.
     ///
@@ -68,29 +67,23 @@ impl<'a> TypeSectionReader<'a> {
 
 impl<'a> SectionReader for TypeSectionReader<'a> {
     type Item = TypeDef<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        TypeSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        TypeSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { TypeSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { TypeSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for TypeSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        TypeSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { TypeSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for TypeSectionReader<'a> {
-    type Item = Result<TypeDef<'a>>;
     type IntoIter = SectionIteratorLimited<TypeSectionReader<'a>>;
+    type Item = Result<TypeDef<'a>>;
 
     /// Implements iterator over the type section.
     ///
@@ -103,7 +96,5 @@ impl<'a> IntoIterator for TypeSectionReader<'a> {
     ///     println!("Type {:?}", ty);
     /// }
     /// ```
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

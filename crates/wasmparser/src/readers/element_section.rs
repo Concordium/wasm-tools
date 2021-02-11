@@ -21,9 +21,9 @@ use crate::{ExternalKind, Operator};
 
 #[derive(Clone)]
 pub struct Element<'a> {
-    pub kind: ElementKind<'a>,
+    pub kind:  ElementKind<'a>,
     pub items: ElementItems<'a>,
-    pub ty: Type,
+    pub ty:    Type,
 }
 
 #[derive(Clone)]
@@ -31,16 +31,16 @@ pub enum ElementKind<'a> {
     Passive,
     Active {
         table_index: u32,
-        init_expr: InitExpr<'a>,
+        init_expr:   InitExpr<'a>,
     },
     Declared,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct ElementItems<'a> {
-    exprs: bool,
+    exprs:  bool,
     offset: usize,
-    data: &'a [u8],
+    data:   &'a [u8],
 }
 
 #[derive(Debug)]
@@ -52,16 +52,15 @@ pub enum ElementItem {
 impl<'a> ElementItems<'a> {
     pub fn get_items_reader<'b>(&self) -> Result<ElementItemsReader<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         ElementItemsReader::new(self.data, self.offset, self.exprs)
     }
 }
 
 pub struct ElementItemsReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
-    exprs: bool,
+    count:  u32,
+    exprs:  bool,
 }
 
 impl<'a> ElementItemsReader<'a> {
@@ -75,24 +74,22 @@ impl<'a> ElementItemsReader<'a> {
         })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
-    pub fn uses_exprs(&self) -> bool {
-        self.exprs
-    }
+    pub fn uses_exprs(&self) -> bool { self.exprs }
 
     pub fn read(&mut self) -> Result<ElementItem> {
         if self.exprs {
             let offset = self.reader.original_position();
             let ret = match self.reader.read_operator()? {
-                Operator::RefNull { ty } => ElementItem::Null(ty),
-                Operator::RefFunc { function_index } => ElementItem::Func(function_index),
+                Operator::RefNull {
+                    ty,
+                } => ElementItem::Null(ty),
+                Operator::RefFunc {
+                    function_index,
+                } => ElementItem::Func(function_index),
                 _ => return Err(BinaryReaderError::new("invalid passive segment", offset)),
             };
             match self.reader.read_operator()? {
@@ -107,26 +104,28 @@ impl<'a> ElementItemsReader<'a> {
 }
 
 impl<'a> IntoIterator for ElementItemsReader<'a> {
-    type Item = Result<ElementItem>;
     type IntoIter = ElementItemsIterator<'a>;
+    type Item = Result<ElementItem>;
+
     fn into_iter(self) -> Self::IntoIter {
         let count = self.count;
         ElementItemsIterator {
             reader: self,
-            left: count,
-            err: false,
+            left:   count,
+            err:    false,
         }
     }
 }
 
 pub struct ElementItemsIterator<'a> {
     reader: ElementItemsReader<'a>,
-    left: u32,
-    err: bool,
+    left:   u32,
+    err:    bool,
 }
 
 impl<'a> Iterator for ElementItemsIterator<'a> {
     type Item = Result<ElementItem>;
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.err || self.left == 0 {
             return None;
@@ -136,6 +135,7 @@ impl<'a> Iterator for ElementItemsIterator<'a> {
         self.left -= 1;
         Some(result)
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         let count = self.reader.get_count() as usize;
         (count, Some(count))
@@ -145,23 +145,22 @@ impl<'a> Iterator for ElementItemsIterator<'a> {
 #[derive(Clone)]
 pub struct ElementSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> ElementSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<ElementSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(ElementSectionReader { reader, count })
+        Ok(ElementSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the element section.
     ///
@@ -169,11 +168,15 @@ impl<'a> ElementSectionReader<'a> {
     ///
     /// ```no_run
     /// # let data: &[u8] = &[];
-    /// use wasmparser::{ElementSectionReader, ElementKind};
+    /// use wasmparser::{ElementKind, ElementSectionReader};
     /// let mut element_reader = ElementSectionReader::new(data, 0).unwrap();
     /// for _ in 0..element_reader.get_count() {
     ///     let element = element_reader.read().expect("element");
-    ///     if let ElementKind::Active { init_expr, .. } = element.kind {
+    ///     if let ElementKind::Active {
+    ///         init_expr,
+    ///         ..
+    ///     } = element.kind
+    ///     {
     ///         let mut init_expr_reader = init_expr.get_binary_reader();
     ///         let op = init_expr_reader.read_operator().expect("op");
     ///         println!("Init const: {:?}", op);
@@ -187,8 +190,7 @@ impl<'a> ElementSectionReader<'a> {
     /// ```
     pub fn read<'b>(&mut self) -> Result<Element<'b>>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         let flags = self.reader.read_var_u32()?;
         if (flags & !0b111) != 0 {
             return Err(BinaryReaderError::new(
@@ -254,37 +256,33 @@ impl<'a> ElementSectionReader<'a> {
             data: &self.reader.buffer[data_start..data_end],
             exprs,
         };
-        Ok(Element { kind, items, ty })
+        Ok(Element {
+            kind,
+            items,
+            ty,
+        })
     }
 }
 
 impl<'a> SectionReader for ElementSectionReader<'a> {
     type Item = Element<'a>;
-    fn read(&mut self) -> Result<Self::Item> {
-        ElementSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        ElementSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { ElementSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { ElementSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for ElementSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        ElementSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { ElementSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for ElementSectionReader<'a> {
-    type Item = Result<Element<'a>>;
     type IntoIter = SectionIteratorLimited<ElementSectionReader<'a>>;
+    type Item = Result<Element<'a>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

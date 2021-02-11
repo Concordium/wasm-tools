@@ -10,7 +10,7 @@ use super::*;
 /// # Example
 ///
 /// ```
-/// use wasm_encoder::{Module, AliasSection, ItemKind};
+/// use wasm_encoder::{AliasSection, ItemKind, Module};
 ///
 /// let mut aliases = AliasSection::new();
 /// aliases.outer_type(0, 2);
@@ -22,7 +22,7 @@ use super::*;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct AliasSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -30,7 +30,7 @@ impl AliasSection {
     /// Construct a new alias section encoder.
     pub fn new() -> AliasSection {
         AliasSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -72,14 +72,11 @@ impl AliasSection {
 }
 
 impl Section for AliasSection {
-    fn id(&self) -> u8 {
-        SectionId::Alias.into()
-    }
+    fn id(&self) -> u8 { SectionId::Alias.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

@@ -18,25 +18,26 @@ use super::{BinaryReader, OperatorsReader};
 #[derive(Debug, Copy, Clone)]
 pub struct InitExpr<'a> {
     offset: usize,
-    data: &'a [u8],
+    data:   &'a [u8],
 }
 
 impl<'a> InitExpr<'a> {
     pub fn new(data: &[u8], offset: usize) -> InitExpr {
-        InitExpr { offset, data }
+        InitExpr {
+            offset,
+            data,
+        }
     }
 
     pub fn get_binary_reader<'b>(&self) -> BinaryReader<'b>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         BinaryReader::new_with_offset(self.data, self.offset)
     }
 
     pub fn get_operators_reader<'b>(&self) -> OperatorsReader<'b>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         OperatorsReader::new(self.data, self.offset)
     }
 }

@@ -9,23 +9,23 @@ pub fn dump_wasm(bytes: &[u8]) -> Result<String> {
 }
 
 struct Dump<'a> {
-    bytes: &'a [u8],
-    cur: usize,
-    state: String,
-    dst: String,
+    bytes:   &'a [u8],
+    cur:     usize,
+    state:   String,
+    dst:     String,
     nesting: u32,
 }
 
 #[derive(Default)]
 struct Indices {
-    funcs: u32,
-    globals: u32,
-    tables: u32,
-    memories: u32,
-    events: u32,
-    modules: u32,
+    funcs:     u32,
+    globals:   u32,
+    tables:    u32,
+    memories:  u32,
+    events:    u32,
+    modules:   u32,
     instances: u32,
-    types: u32,
+    types:     u32,
 }
 
 const NBYTES: usize = 4;
@@ -54,7 +54,10 @@ impl<'a> Dump<'a> {
 
         for item in Parser::new(0).parse_all(self.bytes) {
             match item? {
-                Payload::Version { num, range } => {
+                Payload::Version {
+                    num,
+                    range,
+                } => {
                     write!(self.state, "version {}", num)?;
                     self.print(range.end)?;
                 }
@@ -134,7 +137,10 @@ impl<'a> Dump<'a> {
                 Payload::AliasSection(s) => self.section(s, "alias", |me, end, a| {
                     write!(me.state, "[alias] {:?}", a)?;
                     match a {
-                        Alias::InstanceExport { kind, .. } => match kind {
+                        Alias::InstanceExport {
+                            kind,
+                            ..
+                        } => match kind {
                             ExternalKind::Function => i.funcs += 1,
                             ExternalKind::Global => i.globals += 1,
                             ExternalKind::Module => i.modules += 1,
@@ -144,8 +150,12 @@ impl<'a> Dump<'a> {
                             ExternalKind::Event => i.events += 1,
                             ExternalKind::Type => i.types += 1,
                         },
-                        Alias::OuterType { .. } => i.types += 1,
-                        Alias::OuterModule { .. } => i.modules += 1,
+                        Alias::OuterType {
+                            ..
+                        } => i.types += 1,
+                        Alias::OuterModule {
+                            ..
+                        } => i.modules += 1,
                     }
                     me.print(end)
                 })?,
@@ -165,13 +175,19 @@ impl<'a> Dump<'a> {
                         })
                     })?
                 }
-                Payload::StartSection { func, range } => {
+                Payload::StartSection {
+                    func,
+                    range,
+                } => {
                     write!(self.state, "start section")?;
                     self.print(range.start)?;
                     write!(self.state, "start function {}", func)?;
                     self.print(range.end)?;
                 }
-                Payload::DataCountSection { count, range } => {
+                Payload::DataCountSection {
+                    count,
+                    range,
+                } => {
                     write!(self.state, "data count section")?;
                     self.print(range.start)?;
                     write!(self.state, "data count {}", count)?;
@@ -230,7 +246,11 @@ impl<'a> Dump<'a> {
                     Ok(())
                 })?,
 
-                Payload::CodeSectionStart { count, range, size } => {
+                Payload::CodeSectionStart {
+                    count,
+                    range,
+                    size,
+                } => {
                     write!(self.state, "code section")?;
                     self.print(range.start)?;
                     write!(self.state, "{} count", count)?;
@@ -238,11 +258,7 @@ impl<'a> Dump<'a> {
                 }
 
                 Payload::CodeSectionEntry(body) => {
-                    write!(
-                        self.dst,
-                        "============== func {} ====================\n",
-                        i.funcs
-                    )?;
+                    write!(self.dst, "============== func {} ====================\n", i.funcs)?;
                     i.funcs += 1;
                     write!(self.state, "size of function")?;
                     self.print(body.get_binary_reader().original_position())?;
@@ -257,13 +273,20 @@ impl<'a> Dump<'a> {
                     self.print_ops(body.get_operators_reader()?)?;
                 }
 
-                Payload::ModuleSectionStart { count, range, size } => {
+                Payload::ModuleSectionStart {
+                    count,
+                    range,
+                    size,
+                } => {
                     write!(self.state, "module section")?;
                     self.print(range.start)?;
                     write!(self.state, "{} count", count)?;
                     self.print(range.end - size as usize)?;
                 }
-                Payload::ModuleSectionEntry { parser: _, range } => {
+                Payload::ModuleSectionEntry {
+                    parser: _,
+                    range,
+                } => {
                     write!(self.state, "inline module size")?;
                     self.print(range.start)?;
                     self.nesting += 1;
@@ -367,8 +390,7 @@ impl<'a> Dump<'a> {
         print: impl FnMut(&mut Self, usize, T::Item) -> Result<()>,
     ) -> Result<()>
     where
-        T: SectionReader + SectionWithLimitedItems,
-    {
+        T: SectionReader + SectionWithLimitedItems, {
         write!(self.state, "{} section", name)?;
         self.print(iter.range().start)?;
         self.print_iter(iter, print)
@@ -380,8 +402,7 @@ impl<'a> Dump<'a> {
         mut print: impl FnMut(&mut Self, usize, T::Item) -> Result<()>,
     ) -> Result<()>
     where
-        T: SectionReader + SectionWithLimitedItems,
-    {
+        T: SectionReader + SectionWithLimitedItems, {
         write!(self.state, "{} count", iter.get_count())?;
         self.print(iter.original_position())?;
         for _ in 0..iter.get_count() {

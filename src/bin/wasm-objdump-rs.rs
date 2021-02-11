@@ -27,7 +27,9 @@ fn main() -> Result<()> {
     let mut printer = Printer::default();
     for payload in Parser::new(0).parse_all(&input) {
         match payload? {
-            Version { .. } => printer.start(),
+            Version {
+                ..
+            } => printer.start(),
 
             TypeSection(s) => printer.section(s, "types"),
             ImportSection(s) => printer.section(s, "imports"),
@@ -39,14 +41,28 @@ fn main() -> Result<()> {
             EventSection(s) => printer.section(s, "events"),
             GlobalSection(s) => printer.section(s, "globals"),
             ExportSection(s) => printer.section(s, "exports"),
-            StartSection { range, .. } => printer.section_raw(range, 1, "start"),
+            StartSection {
+                range,
+                ..
+            } => printer.section_raw(range, 1, "start"),
             ElementSection(s) => printer.section(s, "elements"),
-            DataCountSection { range, .. } => printer.section_raw(range, 1, "data count"),
+            DataCountSection {
+                range,
+                ..
+            } => printer.section_raw(range, 1, "data count"),
             DataSection(s) => printer.section(s, "data"),
 
-            CodeSectionStart { range, count, .. } => printer.section_raw(range, count, "code"),
+            CodeSectionStart {
+                range,
+                count,
+                ..
+            } => printer.section_raw(range, count, "code"),
 
-            ModuleSectionStart { range, count, .. } => {
+            ModuleSectionStart {
+                range,
+                count,
+                ..
+            } => {
                 printer.section_raw(range, count, "modules");
                 printer.module_code_counts.push((0, count));
             }
@@ -58,15 +74,19 @@ fn main() -> Result<()> {
             } => printer.section_raw(
                 wasmparser::Range {
                     start: data_offset,
-                    end: data_offset + data.len(),
+                    end:   data_offset + data.len(),
                 },
                 1,
                 &format!("custom {:?}", name),
             ),
 
             CodeSectionEntry(_) => {}
-            ModuleSectionEntry { .. } => {}
-            UnknownSection { .. } => {}
+            ModuleSectionEntry {
+                ..
+            } => {}
+            UnknownSection {
+                ..
+            } => {}
 
             End => printer.end(),
         }
@@ -103,8 +123,7 @@ impl Printer {
 
     fn section<T>(&self, section: T, name: &str)
     where
-        T: wasmparser::SectionWithLimitedItems + wasmparser::SectionReader,
-    {
+        T: wasmparser::SectionWithLimitedItems + wasmparser::SectionReader, {
         self.section_raw(section.range(), section.get_count(), name)
     }
 

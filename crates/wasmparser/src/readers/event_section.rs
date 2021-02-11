@@ -21,23 +21,22 @@ use super::{
 #[derive(Clone)]
 pub struct EventSectionReader<'a> {
     reader: BinaryReader<'a>,
-    count: u32,
+    count:  u32,
 }
 
 impl<'a> EventSectionReader<'a> {
     pub fn new(data: &'a [u8], offset: usize) -> Result<EventSectionReader<'a>> {
         let mut reader = BinaryReader::new_with_offset(data, offset);
         let count = reader.read_var_u32()?;
-        Ok(EventSectionReader { reader, count })
+        Ok(EventSectionReader {
+            reader,
+            count,
+        })
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     /// Reads content of the event section.
     ///
@@ -51,38 +50,28 @@ impl<'a> EventSectionReader<'a> {
     ///     println!("Event: {:?}", et);
     /// }
     /// ```
-    pub fn read(&mut self) -> Result<EventType> {
-        self.reader.read_event_type()
-    }
+    pub fn read(&mut self) -> Result<EventType> { self.reader.read_event_type() }
 }
 
 impl<'a> SectionReader for EventSectionReader<'a> {
     type Item = EventType;
-    fn read(&mut self) -> Result<Self::Item> {
-        EventSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        EventSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { EventSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { EventSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for EventSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        EventSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { EventSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for EventSectionReader<'a> {
-    type Item = Result<EventType>;
     type IntoIter = SectionIteratorLimited<EventSectionReader<'a>>;
+    type Item = Result<EventType>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

@@ -6,29 +6,18 @@
 
 use anyhow::{Context, Result};
 use rayon::prelude::*;
-use std::env;
-use std::time::Instant;
+use std::{env, time::Instant};
 use wasmparser::{Parser, ValidPayload, Validator, WasmFeatures};
 
 const FEATURES: &[(&str, &str, fn(&mut WasmFeatures) -> &mut bool)] = &[
-    ("reference-types", "wasm reference types feature", |f| {
-        &mut f.reference_types
-    }),
+    ("reference-types", "wasm reference types feature", |f| &mut f.reference_types),
     ("simd", "wasm simd feature", |f| &mut f.simd),
     ("threads", "wasm threads feature", |f| &mut f.threads),
-    ("bulk-memory", "wasm bulk memory operations feature", |f| {
-        &mut f.bulk_memory
-    }),
-    ("multi-value", "wasm multi-value feature", |f| {
-        &mut f.multi_value
-    }),
+    ("bulk-memory", "wasm bulk memory operations feature", |f| &mut f.bulk_memory),
+    ("multi-value", "wasm multi-value feature", |f| &mut f.multi_value),
     ("tail-call", "wasm tail-call feature", |f| &mut f.tail_call),
-    ("module-linking", "wasm module-linking feature", |f| {
-        &mut f.module_linking
-    }),
-    ("multi-memory", "wasm multi-memory feature", |f| {
-        &mut f.multi_memory
-    }),
+    ("module-linking", "wasm module-linking feature", |f| &mut f.module_linking),
+    ("multi-memory", "wasm multi-memory feature", |f| &mut f.multi_memory),
     ("memory64", "wasm memory64 feature", |f| &mut f.memory64),
 ];
 
@@ -40,17 +29,9 @@ fn main() -> Result<()> {
 
     for (name, desc, _) in FEATURES {
         opts.optflag("", &format!("enable-{}", name), &format!("Enable {}", desc));
-        opts.optflag(
-            "",
-            &format!("disable-{}", name),
-            &format!("Disable {}", desc),
-        );
+        opts.optflag("", &format!("disable-{}", name), &format!("Disable {}", desc));
     }
-    opts.optflag(
-        "",
-        "deterministic-only",
-        "Require only deterministic instructions",
-    );
+    opts.optflag("", "deterministic-only", "Require only deterministic instructions");
     opts.optflag("h", "help", "print this help menu");
     let matches = opts.parse(env::args_os().skip(1))?;
     if matches.opt_present("h") {

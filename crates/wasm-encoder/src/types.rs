@@ -19,7 +19,7 @@ use std::convert::TryFrom;
 /// let wasm_bytes = module.finish();
 /// ```
 pub struct TypeSection {
-    bytes: Vec<u8>,
+    bytes:     Vec<u8>,
     num_added: u32,
 }
 
@@ -27,7 +27,7 @@ impl TypeSection {
     /// Create a new type section encoder.
     pub fn new() -> TypeSection {
         TypeSection {
-            bytes: vec![],
+            bytes:     vec![],
             num_added: 0,
         }
     }
@@ -38,19 +38,16 @@ impl TypeSection {
         P: IntoIterator<Item = ValType>,
         P::IntoIter: ExactSizeIterator,
         R: IntoIterator<Item = ValType>,
-        R::IntoIter: ExactSizeIterator,
-    {
+        R::IntoIter: ExactSizeIterator, {
         let params = params.into_iter();
         let results = results.into_iter();
 
         self.bytes.push(0x60);
 
-        self.bytes
-            .extend(encoders::u32(u32::try_from(params.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(params.len()).unwrap()));
         self.bytes.extend(params.map(|ty| u8::from(ty)));
 
-        self.bytes
-            .extend(encoders::u32(u32::try_from(results.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(results.len()).unwrap()));
         self.bytes.extend(results.map(|ty| u8::from(ty)));
 
         self.num_added += 1;
@@ -63,15 +60,13 @@ impl TypeSection {
         I: IntoIterator<Item = (&'a str, Option<&'a str>, EntityType)>,
         I::IntoIter: ExactSizeIterator,
         E: IntoIterator<Item = (&'a str, EntityType)>,
-        E::IntoIter: ExactSizeIterator,
-    {
+        E::IntoIter: ExactSizeIterator, {
         let exports = exports.into_iter();
         let imports = imports.into_iter();
 
         self.bytes.push(0x61);
 
-        self.bytes
-            .extend(encoders::u32(u32::try_from(imports.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(imports.len()).unwrap()));
         for (module, name, ty) in imports {
             self.bytes.extend(encoders::str(module));
             match name {
@@ -81,8 +76,7 @@ impl TypeSection {
             ty.encode(&mut self.bytes);
         }
 
-        self.bytes
-            .extend(encoders::u32(u32::try_from(exports.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(exports.len()).unwrap()));
         for (name, ty) in exports {
             self.bytes.extend(encoders::str(name));
             ty.encode(&mut self.bytes);
@@ -96,14 +90,12 @@ impl TypeSection {
     pub fn instance<'a, E>(&mut self, exports: E) -> &mut Self
     where
         E: IntoIterator<Item = (&'a str, EntityType)>,
-        E::IntoIter: ExactSizeIterator,
-    {
+        E::IntoIter: ExactSizeIterator, {
         let exports = exports.into_iter();
 
         self.bytes.push(0x62);
 
-        self.bytes
-            .extend(encoders::u32(u32::try_from(exports.len()).unwrap()));
+        self.bytes.extend(encoders::u32(u32::try_from(exports.len()).unwrap()));
         for (name, ty) in exports {
             self.bytes.extend(encoders::str(name));
             ty.encode(&mut self.bytes);
@@ -115,14 +107,11 @@ impl TypeSection {
 }
 
 impl Section for TypeSection {
-    fn id(&self) -> u8 {
-        SectionId::Type.into()
-    }
+    fn id(&self) -> u8 { SectionId::Type.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let num_added = encoders::u32(self.num_added);
         let n = num_added.len();
         sink.extend(

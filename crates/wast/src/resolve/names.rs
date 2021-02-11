@@ -1,6 +1,4 @@
-use crate::ast::*;
-use crate::resolve::Ns;
-use crate::Error;
+use crate::{ast::*, resolve::Ns, Error};
 use std::collections::{HashMap, HashSet};
 
 pub fn resolve<'a>(
@@ -9,10 +7,10 @@ pub fn resolve<'a>(
 ) -> Result<Resolver<'a>, Error> {
     let mut names = HashMap::new();
     let mut parents = Parents {
-        prev: None,
+        prev:   None,
         cur_id: id,
-        depth: 0,
-        names: &mut names,
+        depth:  0,
+        names:  &mut names,
     };
     let mut resolver = Resolver::default();
     resolver.process(&mut parents, fields)?;
@@ -26,18 +24,18 @@ pub struct Resolver<'a> {
     // information about the signature of the item in that namespace. The
     // signature is later used to synthesize the type of a module and inject
     // type annotations if necessary.
-    funcs: Namespace<'a>,
-    globals: Namespace<'a>,
-    tables: Namespace<'a>,
-    memories: Namespace<'a>,
-    types: Namespace<'a>,
-    events: Namespace<'a>,
-    modules: Namespace<'a>,
-    instances: Namespace<'a>,
-    datas: Namespace<'a>,
-    elems: Namespace<'a>,
-    fields: Namespace<'a>,
-    type_info: Vec<TypeInfo<'a>>,
+    funcs:              Namespace<'a>,
+    globals:            Namespace<'a>,
+    tables:             Namespace<'a>,
+    memories:           Namespace<'a>,
+    types:              Namespace<'a>,
+    events:             Namespace<'a>,
+    modules:            Namespace<'a>,
+    instances:          Namespace<'a>,
+    datas:              Namespace<'a>,
+    elems:              Namespace<'a>,
+    fields:             Namespace<'a>,
+    type_info:          Vec<TypeInfo<'a>>,
     implicit_instances: HashSet<&'a str>,
 }
 
@@ -116,7 +114,10 @@ impl<'a> Resolver<'a> {
                     TypeDef::Func(f) => {
                         let params = f.params.iter().map(|p| p.2).collect();
                         let results = f.results.clone();
-                        self.type_info.push(TypeInfo::Func { params, results });
+                        self.type_info.push(TypeInfo::Func {
+                            params,
+                            results,
+                        });
                     }
                     _ => self.type_info.push(TypeInfo::Other),
                 }
@@ -181,7 +182,11 @@ impl<'a> Resolver<'a> {
                     Index::Num(n, _) => *n,
                     Index::Id(_) => panic!("expected `Num`"),
                 };
-                if let FuncKind::Inline { locals, expression } = &mut f.kind {
+                if let FuncKind::Inline {
+                    locals,
+                    expression,
+                } = &mut f.kind
+                {
                     // Resolve (ref T) in locals
                     for local in locals.iter_mut() {
                         self.resolve_valtype(&mut local.ty)?;
@@ -196,8 +201,10 @@ impl<'a> Resolver<'a> {
                         for (id, _, _) in inline.params.iter() {
                             scope.register(*id, "local")?;
                         }
-                    } else if let Some(TypeInfo::Func { params, .. }) =
-                        self.type_info.get(n as usize)
+                    } else if let Some(TypeInfo::Func {
+                        params,
+                        ..
+                    }) = self.type_info.get(n as usize)
                     {
                         for _ in 0..params.len() {
                             scope.register(None, "local")?;
@@ -224,11 +231,19 @@ impl<'a> Resolver<'a> {
 
             ModuleField::Elem(e) => {
                 match &mut e.kind {
-                    ElemKind::Active { table, offset } => {
+                    ElemKind::Active {
+                        table,
+                        offset,
+                    } => {
                         self.resolve_item_ref(table)?;
                         self.resolve_expr(offset)?;
                     }
-                    ElemKind::Passive { .. } | ElemKind::Declared { .. } => {}
+                    ElemKind::Passive {
+                        ..
+                    }
+                    | ElemKind::Declared {
+                        ..
+                    } => {}
                 }
                 match &mut e.payload {
                     ElemPayload::Indices(elems) => {
@@ -236,7 +251,10 @@ impl<'a> Resolver<'a> {
                             self.resolve_item_ref(idx)?;
                         }
                     }
-                    ElemPayload::Exprs { exprs, ty } => {
+                    ElemPayload::Exprs {
+                        exprs,
+                        ty,
+                    } => {
                         for funcref in exprs {
                             if let Some(idx) = funcref {
                                 self.resolve_item_ref(idx)?;
@@ -249,7 +267,11 @@ impl<'a> Resolver<'a> {
             }
 
             ModuleField::Data(d) => {
-                if let DataKind::Active { memory, offset } = &mut d.kind {
+                if let DataKind::Active {
+                    memory,
+                    offset,
+                } = &mut d.kind
+                {
                     self.resolve_item_ref(memory)?;
                     self.resolve_expr(offset)?;
                 }
@@ -284,7 +306,11 @@ impl<'a> Resolver<'a> {
             }
 
             ModuleField::Instance(i) => {
-                if let InstanceKind::Inline { module, args } = &mut i.kind {
+                if let InstanceKind::Inline {
+                    module,
+                    args,
+                } = &mut i.kind
+                {
                     self.resolve_item_ref(module)?;
                     for arg in args {
                         self.resolve_item_ref(&mut arg.index)?;
@@ -295,8 +321,12 @@ impl<'a> Resolver<'a> {
 
             ModuleField::NestedModule(m) => {
                 let fields = match &mut m.kind {
-                    NestedModuleKind::Inline { fields } => fields,
-                    NestedModuleKind::Import { .. } => panic!("should only be inline"),
+                    NestedModuleKind::Inline {
+                        fields,
+                    } => fields,
+                    NestedModuleKind::Import {
+                        ..
+                    } => panic!("should only be inline"),
                 };
                 Resolver::default().process(&mut parents.push(self, m.id), fields)?;
                 Ok(())
@@ -311,7 +341,10 @@ impl<'a> Resolver<'a> {
 
             ModuleField::Alias(a) => {
                 match &mut a.kind {
-                    AliasKind::InstanceExport { instance, .. } => {
+                    AliasKind::InstanceExport {
+                        instance,
+                        ..
+                    } => {
                         self.resolve_item_ref(instance)?;
                     }
                     AliasKind::Outer {
@@ -326,9 +359,7 @@ impl<'a> Resolver<'a> {
                             // should probably be a wasm validation error.
                             (Index::Num(..), Index::Num(..)) => {}
                             (index, module) => {
-                                parents
-                                    .resolve(module)?
-                                    .resolve(index, Ns::from_export(kind))?;
+                                parents.resolve(module)?.resolve(index, Ns::from_export(kind))?;
                             }
                         }
                     }
@@ -394,8 +425,7 @@ impl<'a> Resolver<'a> {
         ty: &'b mut TypeUse<'a, T>,
     ) -> Result<(&'b Index<'a>, Option<T>), Error>
     where
-        T: TypeReference<'a>,
-    {
+        T: TypeReference<'a>, {
         let idx = ty.index.as_mut().unwrap();
         let idx = self.resolve_item_ref(idx)?;
 
@@ -429,30 +459,35 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_item_ref<'b, K>(&self, item: &'b mut ItemRef<'a, K>) -> Result<&'b Index<'a>, Error>
+    fn resolve_item_ref<'b, K>(
+        &self,
+        item: &'b mut ItemRef<'a, K>,
+    ) -> Result<&'b Index<'a>, Error>
     where
-        K: Into<ExportKind> + Copy,
-    {
+        K: Into<ExportKind> + Copy, {
         match item {
-            ItemRef::Item { idx, kind, exports } => {
+            ItemRef::Item {
+                idx,
+                kind,
+                exports,
+            } => {
                 debug_assert!(exports.len() == 0);
-                self.resolve(
-                    idx,
-                    match (*kind).into() {
-                        ExportKind::Func => Ns::Func,
-                        ExportKind::Table => Ns::Table,
-                        ExportKind::Global => Ns::Global,
-                        ExportKind::Memory => Ns::Memory,
-                        ExportKind::Instance => Ns::Instance,
-                        ExportKind::Module => Ns::Module,
-                        ExportKind::Event => Ns::Event,
-                        ExportKind::Type => Ns::Type,
-                    },
-                )?;
+                self.resolve(idx, match (*kind).into() {
+                    ExportKind::Func => Ns::Func,
+                    ExportKind::Table => Ns::Table,
+                    ExportKind::Global => Ns::Global,
+                    ExportKind::Memory => Ns::Memory,
+                    ExportKind::Instance => Ns::Instance,
+                    ExportKind::Module => Ns::Module,
+                    ExportKind::Event => Ns::Event,
+                    ExportKind::Type => Ns::Type,
+                })?;
                 Ok(idx)
             }
             // should be expanded by now
-            ItemRef::Outer { .. } => unreachable!(),
+            ItemRef::Outer {
+                ..
+            } => unreachable!(),
         }
     }
 }
@@ -489,10 +524,7 @@ impl<'a> Namespace<'a> {
                 // spec tests get updated enough we can remove this condition
                 // and return errors for them.
                 if desc != "elem" && desc != "data" {
-                    return Err(Error::new(
-                        name.span(),
-                        format!("duplicate {} identifier", desc),
-                    ));
+                    return Err(Error::new(name.span(), format!("duplicate {} identifier", desc)));
                 }
             }
         }
@@ -507,10 +539,7 @@ impl<'a> Namespace<'a> {
 
     fn register_specific(&mut self, name: Id<'a>, index: u32, desc: &str) -> Result<(), Error> {
         if let Some(_prev) = self.names.insert(name, index) {
-            return Err(Error::new(
-                name.span(),
-                format!("duplicate identifier for {}", desc),
-            ));
+            return Err(Error::new(name.span(), format!("duplicate identifier for {}", desc)));
         }
         Ok(())
     }
@@ -529,15 +558,8 @@ impl<'a> Namespace<'a> {
 }
 
 fn resolve_error(id: Id<'_>, ns: &str) -> Error {
-    assert!(
-        !id.is_gensym(),
-        "symbol generated by `wast` itself cannot be resolved {:?}",
-        id
-    );
-    Error::new(
-        id.span(),
-        format!("failed to find {} named `${}`", ns, id.name()),
-    )
+    assert!(!id.is_gensym(), "symbol generated by `wast` itself cannot be resolved {:?}", id);
+    Error::new(id.span(), format!("failed to find {} named `${}`", ns, id.name()))
 }
 
 #[derive(Debug, Clone)]
@@ -588,12 +610,10 @@ impl<'a, 'b> ExprResolver<'a, 'b> {
         //
         // To put all that together, here we handle:
         //
-        // * If the `index` was specified, resolve it and use it as the
-        //   source of truth. If this turns out to be an MVP type,
-        //   record it as such.
-        // * Otherwise use `params` and `results` as the source of
-        //   truth. *If* this were a non-MVP compatible block `index`
-        //   would be filled by by `tyexpand.rs`.
+        // * If the `index` was specified, resolve it and use it as the source of truth.
+        //   If this turns out to be an MVP type, record it as such.
+        // * Otherwise use `params` and `results` as the source of truth. *If* this were
+        //   a non-MVP compatible block `index` would be filled by by `tyexpand.rs`.
         //
         // tl;dr; we handle the `index` here if it's set and then fill
         // out `params` and `results` if we can, otherwise no work
@@ -605,7 +625,10 @@ impl<'a, 'b> ExprResolver<'a, 'b> {
                 Index::Id(_) => panic!("expected `Num`"),
             };
             let ty = match self.resolver.type_info.get(n as usize) {
-                Some(TypeInfo::Func { params, results }) => (params, results),
+                Some(TypeInfo::Func {
+                    params,
+                    results,
+                }) => (params, results),
                 _ => return Ok(()),
             };
             if ty.0.len() == 0 && ty.1.len() <= 1 {
@@ -714,7 +737,7 @@ impl<'a, 'b> ExprResolver<'a, 'b> {
                 }
                 self.scopes.push(scope);
                 self.blocks.push(ExprBlock {
-                    label: t.block.label,
+                    label:        t.block.label,
                     pushed_scope: true,
                 });
 
@@ -723,7 +746,7 @@ impl<'a, 'b> ExprResolver<'a, 'b> {
 
             Block(bt) | If(bt) | Loop(bt) | Try(bt) => {
                 self.blocks.push(ExprBlock {
-                    label: bt.label,
+                    label:        bt.label,
                     pushed_scope: false,
                 });
                 self.resolve_block_type(bt)?;
@@ -861,39 +884,38 @@ impl<'a, 'b> ExprResolver<'a, 'b> {
 }
 
 struct Parents<'a, 'b> {
-    prev: Option<ParentNode<'a, 'b>>,
+    prev:   Option<ParentNode<'a, 'b>>,
     cur_id: Option<Id<'a>>,
-    depth: usize,
-    names: &'b mut HashMap<Id<'a>, usize>,
+    depth:  usize,
+    names:  &'b mut HashMap<Id<'a>, usize>,
 }
 
 struct ParentNode<'a, 'b> {
-    resolver: &'b Resolver<'a>,
-    id: Option<Id<'a>>,
-    prev: Option<&'b ParentNode<'a, 'b>>,
+    resolver:   &'b Resolver<'a>,
+    id:         Option<Id<'a>>,
+    prev:       Option<&'b ParentNode<'a, 'b>>,
     prev_depth: Option<usize>,
 }
 
 impl<'a, 'b> Parents<'a, 'b> {
     fn push<'c>(&'c mut self, resolver: &'c Resolver<'a>, id: Option<Id<'a>>) -> Parents<'a, 'c>
     where
-        'b: 'c,
-    {
+        'b: 'c, {
         let prev_depth = if let Some(id) = self.cur_id {
             self.names.insert(id, self.depth)
         } else {
             None
         };
         Parents {
-            prev: Some(ParentNode {
+            prev:   Some(ParentNode {
                 prev: self.prev.as_ref(),
                 resolver,
                 id: self.cur_id,
                 prev_depth,
             }),
             cur_id: id,
-            depth: self.depth + 1,
-            names: &mut *self.names,
+            depth:  self.depth + 1,
+            names:  &mut *self.names,
         }
     }
 
@@ -952,7 +974,7 @@ impl<'a, 'b> Drop for Parents<'a, 'b> {
 
 enum TypeInfo<'a> {
     Func {
-        params: Box<[ValType<'a>]>,
+        params:  Box<[ValType<'a>]>,
         results: Box<[ValType<'a>]>,
     },
     Other,
@@ -970,7 +992,10 @@ impl<'a> TypeReference<'a> for FunctionType<'a> {
             Index::Id(_) => panic!("expected `Num`"),
         };
         let (params, results) = match cx.type_info.get(n as usize) {
-            Some(TypeInfo::Func { params, results }) => (params, results),
+            Some(TypeInfo::Func {
+                params,
+                results,
+            }) => (params, results),
             _ => return Ok(()),
         };
 
@@ -990,14 +1015,8 @@ impl<'a> TypeReference<'a> for FunctionType<'a> {
 
         let not_equal = params.len() != self.params.len()
             || results.len() != self.results.len()
-            || params
-                .iter()
-                .zip(self.params.iter())
-                .any(|(a, (_, _, b))| types_not_equal(a, b))
-            || results
-                .iter()
-                .zip(self.results.iter())
-                .any(|(a, b)| types_not_equal(a, b));
+            || params.iter().zip(self.params.iter()).any(|(a, (_, _, b))| types_not_equal(a, b))
+            || results.iter().zip(self.results.iter()).any(|(a, b)| types_not_equal(a, b));
         if not_equal {
             return Err(Error::new(
                 idx.span(),
@@ -1040,10 +1059,7 @@ impl<'a> TypeReference<'a> for InstanceType<'a> {
 impl<'a> TypeReference<'a> for ModuleType<'a> {
     fn check_matches(&mut self, idx: &Index<'a>, cx: &Resolver<'a>) -> Result<(), Error> {
         drop(cx);
-        Err(Error::new(
-            idx.span(),
-            format!("cannot specify module type as a reference and inline"),
-        ))
+        Err(Error::new(idx.span(), format!("cannot specify module type as a reference and inline")))
     }
 
     fn resolve(&mut self, cx: &Resolver<'a>) -> Result<(), Error> {

@@ -20,16 +20,16 @@ use super::{
 
 #[derive(Debug, Copy, Clone)]
 pub struct Reloc {
-    pub ty: RelocType,
+    pub ty:     RelocType,
     pub offset: u32,
-    pub index: u32,
+    pub index:  u32,
     pub addend: Option<u32>,
 }
 
 pub struct RelocSectionReader<'a> {
-    reader: BinaryReader<'a>,
+    reader:       BinaryReader<'a>,
     section_code: SectionCode<'a>,
-    count: u32,
+    count:        u32,
 }
 
 impl<'a> RelocSectionReader<'a> {
@@ -48,20 +48,15 @@ impl<'a> RelocSectionReader<'a> {
         })
     }
 
-    pub fn get_count(&self) -> u32 {
-        self.count
-    }
+    pub fn get_count(&self) -> u32 { self.count }
 
     pub fn get_section_code<'b>(&self) -> SectionCode<'b>
     where
-        'a: 'b,
-    {
+        'a: 'b, {
         self.section_code
     }
 
-    pub fn original_position(&self) -> usize {
-        self.reader.original_position()
-    }
+    pub fn original_position(&self) -> usize { self.reader.original_position() }
 
     pub fn read(&mut self) -> Result<Reloc> {
         let ty = self.reader.read_reloc_type()?;
@@ -88,31 +83,23 @@ impl<'a> RelocSectionReader<'a> {
 
 impl<'a> SectionReader for RelocSectionReader<'a> {
     type Item = Reloc;
-    fn read(&mut self) -> Result<Self::Item> {
-        RelocSectionReader::read(self)
-    }
-    fn eof(&self) -> bool {
-        self.reader.eof()
-    }
-    fn original_position(&self) -> usize {
-        RelocSectionReader::original_position(self)
-    }
-    fn range(&self) -> Range {
-        self.reader.range()
-    }
+
+    fn read(&mut self) -> Result<Self::Item> { RelocSectionReader::read(self) }
+
+    fn eof(&self) -> bool { self.reader.eof() }
+
+    fn original_position(&self) -> usize { RelocSectionReader::original_position(self) }
+
+    fn range(&self) -> Range { self.reader.range() }
 }
 
 impl<'a> SectionWithLimitedItems for RelocSectionReader<'a> {
-    fn get_count(&self) -> u32 {
-        RelocSectionReader::get_count(self)
-    }
+    fn get_count(&self) -> u32 { RelocSectionReader::get_count(self) }
 }
 
 impl<'a> IntoIterator for RelocSectionReader<'a> {
-    type Item = Result<Reloc>;
     type IntoIter = SectionIteratorLimited<RelocSectionReader<'a>>;
+    type Item = Result<Reloc>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        SectionIteratorLimited::new(self)
-    }
+    fn into_iter(self) -> Self::IntoIter { SectionIteratorLimited::new(self) }
 }

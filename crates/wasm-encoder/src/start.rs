@@ -12,7 +12,9 @@ use super::*;
 /// ```
 /// use wasm_encoder::{Module, StartSection};
 ///
-/// let start = StartSection { function_index: 0 };
+/// let start = StartSection {
+///     function_index: 0,
+/// };
 ///
 /// let mut module = Module::new();
 /// module.section(&start);
@@ -25,14 +27,11 @@ pub struct StartSection {
 }
 
 impl Section for StartSection {
-    fn id(&self) -> u8 {
-        SectionId::Start.into()
-    }
+    fn id(&self) -> u8 { SectionId::Start.into() }
 
     fn encode<S>(&self, sink: &mut S)
     where
-        S: Extend<u8>,
-    {
+        S: Extend<u8>, {
         let f = encoders::u32(self.function_index);
         let n = f.len();
         sink.extend(encoders::u32(n as u32).chain(f));

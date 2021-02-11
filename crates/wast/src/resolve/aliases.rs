@@ -1,5 +1,4 @@
-use crate::ast::*;
-use crate::resolve::gensym;
+use crate::{ast::*, resolve::gensym};
 use std::collections::{hash_map::Entry, HashMap};
 
 pub fn run(fields: &mut Vec<ModuleField>) {
@@ -58,8 +57,8 @@ pub fn run(fields: &mut Vec<ModuleField>) {
 #[derive(Default)]
 struct Expander<'a> {
     to_prepend: Vec<ModuleField<'a>>,
-    instances: HashMap<(Index<'a>, &'a str, ExportKind), Index<'a>>,
-    parents: HashMap<(Index<'a>, Index<'a>, ExportKind), Index<'a>>,
+    instances:  HashMap<(Index<'a>, &'a str, ExportKind), Index<'a>>,
+    parents:    HashMap<(Index<'a>, Index<'a>, ExportKind), Index<'a>>,
 }
 
 impl<'a> Expander<'a> {
@@ -74,8 +73,7 @@ impl<'a> Expander<'a> {
                         kind,
                     } => {
                         self.expand(instance);
-                        self.instances
-                            .insert((*instance.unwrap_index(), export, *kind), id.into());
+                        self.instances.insert((*instance.unwrap_index(), export, *kind), id.into());
                     }
                     AliasKind::Outer {
                         module,
@@ -88,7 +86,11 @@ impl<'a> Expander<'a> {
             }
 
             ModuleField::Instance(i) => {
-                if let InstanceKind::Inline { module, args } = &mut i.kind {
+                if let InstanceKind::Inline {
+                    module,
+                    args,
+                } = &mut i.kind
+                {
                     self.expand(module);
                     for arg in args {
                         self.expand(&mut arg.index);
@@ -97,7 +99,11 @@ impl<'a> Expander<'a> {
             }
 
             ModuleField::Elem(e) => {
-                if let ElemKind::Active { table, .. } = &mut e.kind {
+                if let ElemKind::Active {
+                    table,
+                    ..
+                } = &mut e.kind
+                {
                     self.expand(table);
                 }
                 match &mut e.payload {
@@ -106,7 +112,10 @@ impl<'a> Expander<'a> {
                             self.expand(func);
                         }
                     }
-                    ElemPayload::Exprs { exprs, .. } => {
+                    ElemPayload::Exprs {
+                        exprs,
+                        ..
+                    } => {
                         for func in exprs {
                             if let Some(func) = func {
                                 self.expand(func);
@@ -117,7 +126,11 @@ impl<'a> Expander<'a> {
             }
 
             ModuleField::Data(e) => {
-                if let DataKind::Active { memory, .. } = &mut e.kind {
+                if let DataKind::Active {
+                    memory,
+                    ..
+                } = &mut e.kind
+                {
                     self.expand(memory);
                 }
             }
@@ -126,7 +139,11 @@ impl<'a> Expander<'a> {
 
             ModuleField::Func(f) => {
                 self.expand_type_use(&mut f.ty);
-                if let FuncKind::Inline { expression, .. } = &mut f.kind {
+                if let FuncKind::Inline {
+                    expression,
+                    ..
+                } = &mut f.kind
+                {
                     self.expand_expr(expression);
                 }
             }
@@ -146,8 +163,13 @@ impl<'a> Expander<'a> {
             },
 
             ModuleField::NestedModule(m) => match &mut m.kind {
-                NestedModuleKind::Import { ty, .. } => self.expand_type_use(ty),
-                NestedModuleKind::Inline { fields } => run(fields),
+                NestedModuleKind::Import {
+                    ty,
+                    ..
+                } => self.expand_type_use(ty),
+                NestedModuleKind::Inline {
+                    fields,
+                } => run(fields),
             },
 
             ModuleField::Custom(_)
@@ -217,10 +239,13 @@ impl<'a> Expander<'a> {
 
     fn expand<T>(&mut self, item: &mut ItemRef<'a, T>)
     where
-        T: Into<ExportKind> + Copy,
-    {
+        T: Into<ExportKind> + Copy, {
         match item {
-            ItemRef::Outer { kind, module, idx } => {
+            ItemRef::Outer {
+                kind,
+                module,
+                idx,
+            } => {
                 let key = (*module, *idx, (*kind).into());
                 let idx = match self.parents.entry(key) {
                     Entry::Occupied(e) => *e.get(),
@@ -233,8 +258,8 @@ impl<'a> Expander<'a> {
                             name: None,
                             kind: AliasKind::Outer {
                                 module: *module,
-                                index: *idx,
-                                kind: (*kind).into(),
+                                index:  *idx,
+                                kind:   (*kind).into(),
                             },
                         }));
                         *v.insert(Index::Id(id))
@@ -246,7 +271,11 @@ impl<'a> Expander<'a> {
                     exports: Vec::new(),
                 };
             }
-            ItemRef::Item { kind, idx, exports } => {
+            ItemRef::Item {
+                kind,
+                idx,
+                exports,
+            } => {
                 let mut cur = *idx;
                 let len = exports.len();
                 for (i, export) in exports.drain(..).enumerate() {
@@ -268,8 +297,8 @@ impl<'a> Expander<'a> {
                                 kind: AliasKind::InstanceExport {
                                     kind,
                                     instance: ItemRef::Item {
-                                        kind: kw::instance(span),
-                                        idx: cur,
+                                        kind:    kw::instance(span),
+                                        idx:     cur,
                                         exports: Vec::new(),
                                     },
                                     export,

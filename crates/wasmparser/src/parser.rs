@@ -1,12 +1,10 @@
-use crate::EventSectionReader;
-use crate::{AliasSectionReader, InstanceSectionReader};
-use crate::{BinaryReader, BinaryReaderError, FunctionBody, Range, Result};
-use crate::{DataSectionReader, ElementSectionReader, ExportSectionReader};
-use crate::{FunctionSectionReader, ImportSectionReader, TypeSectionReader};
-use crate::{GlobalSectionReader, MemorySectionReader, TableSectionReader};
-use std::convert::TryInto;
-use std::fmt;
-use std::iter;
+use crate::{
+    AliasSectionReader, BinaryReader, BinaryReaderError, DataSectionReader, ElementSectionReader,
+    EventSectionReader, ExportSectionReader, FunctionBody, FunctionSectionReader,
+    GlobalSectionReader, ImportSectionReader, InstanceSectionReader, MemorySectionReader, Range,
+    Result, TableSectionReader, TypeSectionReader,
+};
+use std::{convert::TryInto, fmt, iter};
 
 /// An incremental parser of a binary WebAssembly module.
 ///
@@ -19,8 +17,8 @@ use std::iter;
 /// function to parse a module that is entirely resident in memory.
 #[derive(Debug, Clone)]
 pub struct Parser {
-    state: State,
-    offset: u64,
+    state:    State,
+    offset:   u64,
     max_size: u64,
 }
 
@@ -28,8 +26,14 @@ pub struct Parser {
 enum State {
     ModuleHeader,
     SectionStart,
-    FunctionBody { remaining: u32, len: u32 },
-    Module { remaining: u32, len: u32 },
+    FunctionBody {
+        remaining: u32,
+        len:       u32,
+    },
+    Module {
+        remaining: u32,
+        len:       u32,
+    },
 }
 
 /// A successful return payload from [`Parser::parse`].
@@ -301,9 +305,9 @@ impl Parser {
     /// incrementally parsing it.
     ///
     /// ```
-    /// use std::io::Read;
     /// use anyhow::Result;
-    /// use wasmparser::{Parser, Chunk, Payload::*};
+    /// use std::io::Read;
+    /// use wasmparser::{Chunk, Parser, Payload::*};
     ///
     /// fn parse(mut reader: impl Read) -> Result<()> {
     ///     let mut buf = Vec::new();
@@ -329,12 +333,17 @@ impl Parser {
     ///                 continue;
     ///             }
     ///
-    ///             Chunk::Parsed { consumed, payload } => (payload, consumed),
+    ///             Chunk::Parsed {
+    ///                 consumed,
+    ///                 payload,
+    ///             } => (payload, consumed),
     ///         };
     ///
     ///         match payload {
     ///             // Each of these would be handled individually as necessary
-    ///             Version { .. } => { /* ... */ }
+    ///             Version {
+    ///                 ..
+    ///             } => { /* ... */ }
     ///             TypeSection(_) => { /* ... */ }
     ///             ImportSection(_) => { /* ... */ }
     ///             AliasSection(_) => { /* ... */ }
@@ -345,16 +354,22 @@ impl Parser {
     ///             EventSection(_) => { /* ... */ }
     ///             GlobalSection(_) => { /* ... */ }
     ///             ExportSection(_) => { /* ... */ }
-    ///             StartSection { .. } => { /* ... */ }
+    ///             StartSection {
+    ///                 ..
+    ///             } => { /* ... */ }
     ///             ElementSection(_) => { /* ... */ }
-    ///             DataCountSection { .. } => { /* ... */ }
+    ///             DataCountSection {
+    ///                 ..
+    ///             } => { /* ... */ }
     ///             DataSection(_) => { /* ... */ }
     ///
     ///             // Here we know how many functions we'll be receiving as
     ///             // `CodeSectionEntry`, so we can prepare for that, and
     ///             // afterwards we can parse and handle each function
     ///             // individually.
-    ///             CodeSectionStart { .. } => { /* ... */ }
+    ///             CodeSectionStart {
+    ///                 ..
+    ///             } => { /* ... */ }
     ///             CodeSectionEntry(body) => {
     ///                 // here we can iterate over `body` to parse the function
     ///                 // and its locals
@@ -362,16 +377,27 @@ impl Parser {
     ///
     ///             // When parsing nested modules we need to switch which
     ///             // `Parser` we're using.
-    ///             ModuleSectionStart { .. } => { /* ... */ }
-    ///             ModuleSectionEntry { parser: subparser, .. } => {
+    ///             ModuleSectionStart {
+    ///                 ..
+    ///             } => { /* ... */ }
+    ///             ModuleSectionEntry {
+    ///                 parser: subparser,
+    ///                 ..
+    ///             } => {
     ///                 stack.push(parser);
     ///                 parser = subparser;
     ///             }
     ///
-    ///             CustomSection { name, .. } => { /* ... */ }
+    ///             CustomSection {
+    ///                 name,
+    ///                 ..
+    ///             } => { /* ... */ }
     ///
     ///             // most likely you'd return an error here
-    ///             UnknownSection { id, .. } => { /* ... */ }
+    ///             UnknownSection {
+    ///                 id,
+    ///                 ..
+    ///             } => { /* ... */ }
     ///
     ///             // Once we've reached the end of a module we either resume
     ///             // at the parent module or we break out of the loop because
@@ -502,7 +528,10 @@ impl Parser {
                     7 => section(reader, len, ExportSectionReader::new, ExportSection),
                     8 => {
                         let (func, range) = single_u32(reader, len, "start")?;
-                        Ok(StartSection { func, range })
+                        Ok(StartSection {
+                            func,
+                            range,
+                        })
                     }
                     9 => section(reader, len, ElementSectionReader::new, ElementSection),
                     10 => {
@@ -525,7 +554,10 @@ impl Parser {
                     11 => section(reader, len, DataSectionReader::new, DataSection),
                     12 => {
                         let (count, range) = single_u32(reader, len, "data count")?;
-                        Ok(DataCountSection { count, range })
+                        Ok(DataCountSection {
+                            count,
+                            range,
+                        })
                     }
                     13 => section(reader, len, EventSectionReader::new, EventSection),
                     14 => {
@@ -552,7 +584,7 @@ impl Parser {
                         let contents = reader.read_bytes(len as usize)?;
                         let range = Range {
                             start: offset,
-                            end: offset + len as usize,
+                            end:   offset + len as usize,
                         };
                         Ok(UnknownSection {
                             id,
@@ -580,13 +612,17 @@ impl Parser {
 
             // ... otherwise trailing bytes with no remaining entries in these
             // sections indicates an error.
-            State::FunctionBody { remaining: 0, len } | State::Module { remaining: 0, len } => {
+            State::FunctionBody {
+                remaining: 0,
+                len,
+            }
+            | State::Module {
+                remaining: 0,
+                len,
+            } => {
                 debug_assert!(len > 0);
                 let offset = reader.original_position();
-                Err(BinaryReaderError::new(
-                    "trailing bytes at end of section",
-                    offset,
-                ))
+                Err(BinaryReaderError::new("trailing bytes at end of section", offset))
             }
 
             // Functions are relatively easy to parse when we know there's at
@@ -602,7 +638,10 @@ impl Parser {
             // `fn parse`, and limiting by our section size happens via
             // `delimited`. Actual parsing of the function body is delegated to
             // the caller to iterate over the `FunctionBody` structure.
-            State::FunctionBody { remaining, mut len } => {
+            State::FunctionBody {
+                remaining,
+                mut len,
+            } => {
                 let body = delimited(reader, &mut len, |r| {
                     let size = r.read_var_u32()?;
                     let offset = r.original_position();
@@ -629,20 +668,22 @@ impl Parser {
             // receive the next `size` bytes, so we need to update our internal
             // bookkeeping to account for that:
             //
-            // * The `len`, number of bytes remaining in this section, is
-            //   decremented by `size`. This can underflow, however, meaning
-            //   that the size of the module doesn't fit within the section.
+            // * The `len`, number of bytes remaining in this section, is decremented by `size`.
+            //   This can underflow, however, meaning that the size of the module doesn't fit within
+            //   the section.
             //
-            // * Our `Parser::max_size` field needs to account for the bytes
-            //   that we're reading. Note that this is guaranteed to not
-            //   underflow, however, because whenever we parse a section header
-            //   we guarantee that its contents fit within our `max_size`.
+            // * Our `Parser::max_size` field needs to account for the bytes that we're reading.
+            //   Note that this is guaranteed to not underflow, however, because whenever we parse a
+            //   section header we guarantee that its contents fit within our `max_size`.
             //
             // To update `len` we do that when updating `self.state`, and to
             // update `max_size` we do that inline. Note that this will get
             // further tweaked after we return with the bytes we read specifying
             // the size of the module itself.
-            State::Module { remaining, mut len } => {
+            State::Module {
+                remaining,
+                mut len,
+            } => {
                 let size = delimited(reader, &mut len, |r| r.read_var_u32())?;
                 match len.checked_sub(size) {
                     Some(i) => len = i,
@@ -659,13 +700,16 @@ impl Parser {
                 };
                 let range = Range {
                     start: reader.original_position(),
-                    end: reader.original_position() + size as usize,
+                    end:   reader.original_position() + size as usize,
                 };
                 self.max_size -= u64::from(size);
                 self.offset += u64::from(size);
                 let mut parser = Parser::new(usize_to_u64(reader.original_position()));
                 parser.max_size = size.into();
-                Ok(ModuleSectionEntry { parser, range })
+                Ok(ModuleSectionEntry {
+                    parser,
+                    range,
+                })
             }
         }
     }
@@ -698,7 +742,10 @@ impl Parser {
                 // This isn't possible because `eof` is always true.
                 Ok(Chunk::NeedMoreData(_)) => unreachable!(),
 
-                Ok(Chunk::Parsed { payload, consumed }) => {
+                Ok(Chunk::Parsed {
+                    payload,
+                    consumed,
+                }) => {
                     data = &data[consumed..];
                     payload
                 }
@@ -718,7 +765,10 @@ impl Parser {
                 //
                 // Afterwards we turn the loop again to recurse in parsing the
                 // nested module.
-                Payload::ModuleSectionEntry { parser, range: _ } => {
+                Payload::ModuleSectionEntry {
+                    parser,
+                    range: _,
+                } => {
                     stack.push(cur.clone());
                     cur = parser.clone();
                 }
@@ -748,13 +798,16 @@ impl Parser {
     /// # Examples
     ///
     /// ```
-    /// use wasmparser::{Result, Parser, Chunk, Range, SectionReader, Payload::*};
+    /// use wasmparser::{Chunk, Parser, Payload::*, Range, Result, SectionReader};
     ///
     /// fn objdump_headers(mut wasm: &[u8]) -> Result<()> {
     ///     let mut parser = Parser::new(0);
     ///     loop {
     ///         let payload = match parser.parse(wasm, true)? {
-    ///             Chunk::Parsed { consumed, payload } => {
+    ///             Chunk::Parsed {
+    ///                 consumed,
+    ///                 payload,
+    ///             } => {
     ///                 wasm = &wasm[consumed..];
     ///                 payload
     ///             }
@@ -768,7 +821,11 @@ impl Parser {
     ///
     ///             // Print the range of the code section we see, but don't
     ///             // actually iterate over each individual function.
-    ///             CodeSectionStart { range, size, .. } => {
+    ///             CodeSectionStart {
+    ///                 range,
+    ///                 size,
+    ///                 ..
+    ///             } => {
     ///                 print_range("code section", &range);
     ///                 parser.skip_section();
     ///                 wasm = &wasm[size as usize..];
@@ -786,7 +843,14 @@ impl Parser {
     /// ```
     pub fn skip_section(&mut self) {
         let skip = match self.state {
-            State::FunctionBody { remaining: _, len } | State::Module { remaining: _, len } => len,
+            State::FunctionBody {
+                remaining: _,
+                len,
+            }
+            | State::Module {
+                remaining: _,
+                len,
+            } => len,
             _ => panic!("wrong state to call `skip_section`"),
         };
         self.offset += u64::from(skip);
@@ -795,9 +859,7 @@ impl Parser {
     }
 }
 
-fn usize_to_u64(a: usize) -> u64 {
-    a.try_into().unwrap()
-}
+fn usize_to_u64(a: usize) -> u64 { a.try_into().unwrap() }
 
 /// Parses an entire section resident in memory into a `Payload`.
 ///
@@ -833,7 +895,7 @@ fn subreader<'a>(reader: &mut BinaryReader<'a>, len: u32) -> Result<BinaryReader
 fn single_u32<'a>(reader: &mut BinaryReader<'a>, len: u32, desc: &str) -> Result<(u32, Range)> {
     let range = Range {
         start: reader.original_position(),
-        end: reader.original_position() + len as usize,
+        end:   reader.original_position() + len as usize,
     };
     let mut content = subreader(reader, len)?;
     // We can't recover from "unexpected eof" here because our entire section is
@@ -861,11 +923,7 @@ fn delimited<'a, T>(
 ) -> Result<T> {
     let start = reader.position;
     let ret = f(reader)?;
-    *len = match (reader.position - start)
-        .try_into()
-        .ok()
-        .and_then(|i| len.checked_sub(i))
-    {
+    *len = match (reader.position - start).try_into().ok().and_then(|i| len.checked_sub(i)) {
         Some(i) => i,
         None => return Err(BinaryReaderError::new("Unexpected EOF", start)),
     };
@@ -873,9 +931,7 @@ fn delimited<'a, T>(
 }
 
 impl Default for Parser {
-    fn default() -> Parser {
-        Parser::new(0)
-    }
+    fn default() -> Parser { Parser::new(0) }
 }
 
 impl fmt::Debug for Payload<'_> {
@@ -892,11 +948,10 @@ impl fmt::Debug for Payload<'_> {
                 .field("data_offset", data_offset)
                 .field("data", &"...")
                 .finish(),
-            Version { num, range } => f
-                .debug_struct("Version")
-                .field("num", num)
-                .field("range", range)
-                .finish(),
+            Version {
+                num,
+                range,
+            } => f.debug_struct("Version").field("num", num).field("range", range).finish(),
             TypeSection(_) => f.debug_tuple("TypeSection").field(&"...").finish(),
             ImportSection(_) => f.debug_tuple("ImportSection").field(&"...").finish(),
             AliasSection(_) => f.debug_tuple("AliasSection").field(&"...").finish(),
@@ -909,38 +964,48 @@ impl fmt::Debug for Payload<'_> {
             ExportSection(_) => f.debug_tuple("ExportSection").field(&"...").finish(),
             ElementSection(_) => f.debug_tuple("ElementSection").field(&"...").finish(),
             DataSection(_) => f.debug_tuple("DataSection").field(&"...").finish(),
-            StartSection { func, range } => f
-                .debug_struct("StartSection")
-                .field("func", func)
-                .field("range", range)
-                .finish(),
-            DataCountSection { count, range } => f
+            StartSection {
+                func,
+                range,
+            } => f.debug_struct("StartSection").field("func", func).field("range", range).finish(),
+            DataCountSection {
+                count,
+                range,
+            } => f
                 .debug_struct("DataCountSection")
                 .field("count", count)
                 .field("range", range)
                 .finish(),
-            CodeSectionStart { count, range, size } => f
+            CodeSectionStart {
+                count,
+                range,
+                size,
+            } => f
                 .debug_struct("CodeSectionStart")
                 .field("count", count)
                 .field("range", range)
                 .field("size", size)
                 .finish(),
             CodeSectionEntry(_) => f.debug_tuple("CodeSectionEntry").field(&"...").finish(),
-            ModuleSectionStart { count, range, size } => f
+            ModuleSectionStart {
+                count,
+                range,
+                size,
+            } => f
                 .debug_struct("ModuleSectionStart")
                 .field("count", count)
                 .field("range", range)
                 .field("size", size)
                 .finish(),
-            ModuleSectionEntry { parser: _, range } => f
-                .debug_struct("ModuleSectionEntry")
-                .field("range", range)
-                .finish(),
-            UnknownSection { id, range, .. } => f
-                .debug_struct("UnknownSection")
-                .field("id", id)
-                .field("range", range)
-                .finish(),
+            ModuleSectionEntry {
+                parser: _,
+                range,
+            } => f.debug_struct("ModuleSectionEntry").field("range", range).finish(),
+            UnknownSection {
+                id,
+                range,
+                ..
+            } => f.debug_struct("UnknownSection").field("id", id).field("range", range).finish(),
             End => f.write_str("End"),
         }
     }
@@ -967,23 +1032,18 @@ mod tests {
     #[test]
     fn header() {
         assert!(Parser::default().parse(&[], true).is_err());
-        assert_matches!(
-            Parser::default().parse(&[], false),
-            Ok(Chunk::NeedMoreData(4)),
-        );
-        assert_matches!(
-            Parser::default().parse(b"\0", false),
-            Ok(Chunk::NeedMoreData(3)),
-        );
-        assert_matches!(
-            Parser::default().parse(b"\0asm", false),
-            Ok(Chunk::NeedMoreData(4)),
-        );
+        assert_matches!(Parser::default().parse(&[], false), Ok(Chunk::NeedMoreData(4)),);
+        assert_matches!(Parser::default().parse(b"\0", false), Ok(Chunk::NeedMoreData(3)),);
+        assert_matches!(Parser::default().parse(b"\0asm", false), Ok(Chunk::NeedMoreData(4)),);
         assert_matches!(
             Parser::default().parse(b"\0asm\x01\0\0\0", false),
             Ok(Chunk::Parsed {
                 consumed: 8,
-                payload: Payload::Version { num: 1, .. },
+                payload:
+                    Payload::Version {
+                        num: 1,
+                        ..
+                    },
             }),
         );
     }
@@ -994,7 +1054,11 @@ mod tests {
             p.parse(b"\0asm\x01\0\0\0", false),
             Ok(Chunk::Parsed {
                 consumed: 8,
-                payload: Payload::Version { num: 1, .. },
+                payload:
+                    Payload::Version {
+                        num: 1,
+                        ..
+                    },
             }),
         );
         return p;
@@ -1002,30 +1066,22 @@ mod tests {
 
     #[test]
     fn start_section() {
-        assert_matches!(
-            parser_after_header().parse(&[], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
+        assert_matches!(parser_after_header().parse(&[], false), Ok(Chunk::NeedMoreData(1)),);
         assert!(parser_after_header().parse(&[8], true).is_err());
         assert!(parser_after_header().parse(&[8, 1], true).is_err());
         assert!(parser_after_header().parse(&[8, 2], true).is_err());
-        assert_matches!(
-            parser_after_header().parse(&[8], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
-        assert_matches!(
-            parser_after_header().parse(&[8, 1], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
-        assert_matches!(
-            parser_after_header().parse(&[8, 2], false),
-            Ok(Chunk::NeedMoreData(2)),
-        );
+        assert_matches!(parser_after_header().parse(&[8], false), Ok(Chunk::NeedMoreData(1)),);
+        assert_matches!(parser_after_header().parse(&[8, 1], false), Ok(Chunk::NeedMoreData(1)),);
+        assert_matches!(parser_after_header().parse(&[8, 2], false), Ok(Chunk::NeedMoreData(2)),);
         assert_matches!(
             parser_after_header().parse(&[8, 1, 1], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::StartSection { func: 1, .. },
+                payload:
+                    Payload::StartSection {
+                        func: 1,
+                        ..
+                    },
             }),
         );
         assert!(parser_after_header().parse(&[8, 2, 1, 1], false).is_err());
@@ -1038,7 +1094,7 @@ mod tests {
             parser_after_header().parse(&[], true),
             Ok(Chunk::Parsed {
                 consumed: 0,
-                payload: Payload::End,
+                payload:  Payload::End,
             }),
         );
     }
@@ -1048,14 +1104,8 @@ mod tests {
         assert!(parser_after_header().parse(&[1], true).is_err());
         assert!(parser_after_header().parse(&[1, 0], false).is_err());
         // assert!(parser_after_header().parse(&[8, 2], true).is_err());
-        assert_matches!(
-            parser_after_header().parse(&[1], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
-        assert_matches!(
-            parser_after_header().parse(&[1, 1], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
+        assert_matches!(parser_after_header().parse(&[1], false), Ok(Chunk::NeedMoreData(1)),);
+        assert_matches!(parser_after_header().parse(&[1, 1], false), Ok(Chunk::NeedMoreData(1)),);
         assert_matches!(
             parser_after_header().parse(&[1, 1, 1], false),
             Ok(Chunk::Parsed {
@@ -1077,18 +1127,15 @@ mod tests {
         assert!(parser_after_header().parse(&[0], true).is_err());
         assert!(parser_after_header().parse(&[0, 0], false).is_err());
         assert!(parser_after_header().parse(&[0, 1, 1], false).is_err());
-        assert_matches!(
-            parser_after_header().parse(&[0, 2, 1], false),
-            Ok(Chunk::NeedMoreData(1)),
-        );
+        assert_matches!(parser_after_header().parse(&[0, 2, 1], false), Ok(Chunk::NeedMoreData(1)),);
         assert_matches!(
             parser_after_header().parse(&[0, 1, 0], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CustomSection {
-                    name: "",
+                payload:  Payload::CustomSection {
+                    name:        "",
                     data_offset: 11,
-                    data: b"",
+                    data:        b"",
                 },
             }),
         );
@@ -1096,10 +1143,10 @@ mod tests {
             parser_after_header().parse(&[0, 2, 1, b'a'], false),
             Ok(Chunk::Parsed {
                 consumed: 4,
-                payload: Payload::CustomSection {
-                    name: "a",
+                payload:  Payload::CustomSection {
+                    name:        "a",
                     data_offset: 12,
-                    data: b"",
+                    data:        b"",
                 },
             }),
         );
@@ -1107,10 +1154,10 @@ mod tests {
             parser_after_header().parse(&[0, 2, 0, b'a'], false),
             Ok(Chunk::Parsed {
                 consumed: 4,
-                payload: Payload::CustomSection {
-                    name: "",
+                payload:  Payload::CustomSection {
+                    name:        "",
                     data_offset: 11,
-                    data: b"a",
+                    data:        b"a",
                 },
             }),
         );
@@ -1121,27 +1168,25 @@ mod tests {
         assert!(parser_after_header().parse(&[10], true).is_err());
         assert!(parser_after_header().parse(&[10, 0], true).is_err());
         assert!(parser_after_header().parse(&[10, 1], true).is_err());
-        assert_matches!(
-            parser_after_header().parse(&[10], false),
-            Ok(Chunk::NeedMoreData(1))
-        );
-        assert_matches!(
-            parser_after_header().parse(&[10, 1], false),
-            Ok(Chunk::NeedMoreData(1))
-        );
+        assert_matches!(parser_after_header().parse(&[10], false), Ok(Chunk::NeedMoreData(1)));
+        assert_matches!(parser_after_header().parse(&[10, 1], false), Ok(Chunk::NeedMoreData(1)));
         let mut p = parser_after_header();
         assert_matches!(
             p.parse(&[10, 1, 0], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CodeSectionStart { count: 0, .. },
+                payload:
+                    Payload::CodeSectionStart {
+                        count: 0,
+                        ..
+                    },
             }),
         );
         assert_matches!(
             p.parse(&[], true),
             Ok(Chunk::Parsed {
                 consumed: 0,
-                payload: Payload::End,
+                payload:  Payload::End,
             }),
         );
         let mut p = parser_after_header();
@@ -1149,7 +1194,11 @@ mod tests {
             p.parse(&[10, 2, 1, 0], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CodeSectionStart { count: 1, .. },
+                payload:
+                    Payload::CodeSectionStart {
+                        count: 1,
+                        ..
+                    },
             }),
         );
         assert_matches!(
@@ -1163,7 +1212,7 @@ mod tests {
             p.parse(&[], true),
             Ok(Chunk::Parsed {
                 consumed: 0,
-                payload: Payload::End,
+                payload:  Payload::End,
             }),
         );
 
@@ -1174,13 +1223,14 @@ mod tests {
             p.parse(&[10, 1, 1], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CodeSectionStart { count: 1, .. },
+                payload:
+                    Payload::CodeSectionStart {
+                        count: 1,
+                        ..
+                    },
             }),
         );
-        assert_eq!(
-            p.parse(&[0], false).unwrap_err().message(),
-            "Unexpected EOF"
-        );
+        assert_eq!(p.parse(&[0], false).unwrap_err().message(), "Unexpected EOF");
 
         // section with 2 functions but section is cut off
         let mut p = parser_after_header();
@@ -1188,7 +1238,11 @@ mod tests {
             p.parse(&[10, 2, 2], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CodeSectionStart { count: 2, .. },
+                payload:
+                    Payload::CodeSectionStart {
+                        count: 2,
+                        ..
+                    },
             }),
         );
         assert_matches!(
@@ -1199,10 +1253,7 @@ mod tests {
             }),
         );
         assert_matches!(p.parse(&[], false), Ok(Chunk::NeedMoreData(1)));
-        assert_eq!(
-            p.parse(&[0], false).unwrap_err().message(),
-            "Unexpected EOF",
-        );
+        assert_eq!(p.parse(&[0], false).unwrap_err().message(), "Unexpected EOF",);
 
         // trailing data is bad
         let mut p = parser_after_header();
@@ -1210,7 +1261,11 @@ mod tests {
             p.parse(&[10, 3, 1], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::CodeSectionStart { count: 1, .. },
+                payload:
+                    Payload::CodeSectionStart {
+                        count: 1,
+                        ..
+                    },
             }),
         );
         assert_matches!(
@@ -1220,10 +1275,7 @@ mod tests {
                 payload: Payload::CodeSectionEntry(_),
             }),
         );
-        assert_eq!(
-            p.parse(&[0], false).unwrap_err().message(),
-            "trailing bytes at end of section",
-        );
+        assert_eq!(p.parse(&[0], false).unwrap_err().message(), "trailing bytes at end of section",);
     }
 
     #[test]
@@ -1246,7 +1298,11 @@ mod tests {
             p.parse(&[14, 10, 1], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::ModuleSectionStart { count: 1, .. },
+                payload:
+                    Payload::ModuleSectionStart {
+                        count: 1,
+                        ..
+                    },
             })
         );
         // Declare an empty module, which will be 8 bytes large for the header.
@@ -1254,7 +1310,11 @@ mod tests {
         let mut sub = match p.parse(&[8], false) {
             Ok(Chunk::Parsed {
                 consumed: 1,
-                payload: Payload::ModuleSectionEntry { parser, .. },
+                payload:
+                    Payload::ModuleSectionEntry {
+                        parser,
+                        ..
+                    },
             }) => parser,
             other => panic!("bad parse {:?}", other),
         };
@@ -1266,7 +1326,11 @@ mod tests {
             sub.parse(b"\0asm\x01\0\0\0", false),
             Ok(Chunk::Parsed {
                 consumed: 8,
-                payload: Payload::Version { num: 1, .. },
+                payload:
+                    Payload::Version {
+                        num: 1,
+                        ..
+                    },
             }),
         );
 
@@ -1276,7 +1340,7 @@ mod tests {
             sub.parse(&[10], false),
             Ok(Chunk::Parsed {
                 consumed: 0,
-                payload: Payload::End,
+                payload:  Payload::End,
             }),
         );
 
@@ -1288,7 +1352,7 @@ mod tests {
             p.parse(&[], true),
             Ok(Chunk::Parsed {
                 consumed: 0,
-                payload: Payload::End,
+                payload:  Payload::End,
             }),
         );
     }
@@ -1302,7 +1366,11 @@ mod tests {
             p.parse(&[14, 12, 1], false),
             Ok(Chunk::Parsed {
                 consumed: 3,
-                payload: Payload::ModuleSectionStart { count: 1, .. },
+                payload:
+                    Payload::ModuleSectionStart {
+                        count: 1,
+                        ..
+                    },
             })
         );
         // Use one byte to say we're a 10 byte module, which fits exactly within
@@ -1310,7 +1378,11 @@ mod tests {
         let mut sub = match p.parse(&[10], false) {
             Ok(Chunk::Parsed {
                 consumed: 1,
-                payload: Payload::ModuleSectionEntry { parser, .. },
+                payload:
+                    Payload::ModuleSectionEntry {
+                        parser,
+                        ..
+                    },
             }) => parser,
             other => panic!("bad parse {:?}", other),
         };
@@ -1321,7 +1393,11 @@ mod tests {
             sub.parse(b"\0asm\x01\0\0\0", false),
             Ok(Chunk::Parsed {
                 consumed: 8,
-                payload: Payload::Version { num: 1, .. },
+                payload:
+                    Payload::Version {
+                        num: 1,
+                        ..
+                    },
             }),
         );
 
@@ -1329,9 +1405,6 @@ mod tests {
         // module. This is section 1, one byte big, with one content byte. The
         // content byte, however, lives outside of the parent's module code
         // section.
-        assert_eq!(
-            sub.parse(&[1, 1, 0], false).unwrap_err().message(),
-            "section too large",
-        );
+        assert_eq!(sub.parse(&[1, 1, 0], false).unwrap_err().message(), "section too large",);
     }
 }
