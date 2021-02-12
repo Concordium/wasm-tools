@@ -661,7 +661,7 @@ where
     fn arbitrary_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
         let mut params = vec![];
         let mut result = None;
-        arbitrary_loop(u, 0, 20, |u| {
+        arbitrary_loop(u, 0, self.config.max_parameters(), |u| {
             params.push(self.arbitrary_valtype(u)?);
             Ok(true)
         })?;

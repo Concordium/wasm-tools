@@ -198,6 +198,9 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// Allow function block type?
     fn allow_function_blocktype(&self) -> bool { false }
+
+    /// Maximum number of function parameters to generate
+    fn max_parameters(&self) -> usize { 20 }
 }
 
 /// The default configuration.
