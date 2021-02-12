@@ -133,6 +133,9 @@ where
     /// defined.
     implicit_instance_types: HashMap<String, usize>,
 
+    /// Keeping track of used host functions (because we disallow repeating imports)
+    used_imports: HashSet<usize>,
+
     /// All types locally defined in this module (available in the type index
     /// space).
     types: Vec<Defined>,
@@ -676,7 +679,15 @@ where
     fn arbitrary_hf_func_type(&mut self, u: &mut Unstructured) -> Result<Rc<FuncType>> {
         assert!(!self.config().host_functions().is_empty(), "No host-function types specified");
         let hfs = self.config().host_functions();
-        let hf = u.choose(&hfs)?;
+        // generating index of an unused host function
+        let hfs_len = hfs.len();
+        let index = u.int_in_range(0..=hfs_len - 1)?;
+        let mut unused_index = index;
+        while self.used_imports.contains(&unused_index) {
+            unused_index = (unused_index + 1) % hfs_len;
+        }
+        self.used_imports.insert(unused_index);
+        let hf = &hfs[unused_index];
         let ret_type = hf.result;
         Ok(Rc::new(FuncType {
             params:        hf.params.clone(),
@@ -688,10 +699,6 @@ where
 
     fn can_add_local_func(&self) -> bool {
         self.func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
-    }
-
-    fn can_add_import_func(&self) -> bool {
-        self.host_func_types.len() > 0 && self.funcs.len() < self.config.max_funcs()
     }
 
     fn can_add_local_or_import_table(&self) -> bool { self.tables.len() < self.config.max_tables() }
@@ -706,35 +713,25 @@ where
 
     fn arbitrary_imports(&mut self, u: &mut Unstructured) -> Result<()> {
         let mut imports = Vec::new();
-        arbitrary_loop(
-            u,
-            self.config.min_imports(),
-            self.config.max_imports() - self.num_imports,
-            |u| {
-                if self.can_add_import_func() {
-                    let idx = u.choose(&self.host_func_types)?;
-                    let ty = self.func_type(*idx).clone();
-                    match &ty.host_function {
-                        Some(hf) => {
-                            let hf_name = String::from(hf.name);
-                            if !self.imported_funcs.contains(&hf_name) {
-                                self.imported_funcs.push(hf_name);
-                                self.funcs.push((*idx as usize, ty.clone()));
-                                self.num_imports += 1;
-                                imports.push((
-                                    String::from(hf.mod_name),
-                                    Some(String::from(hf.name)),
-                                    FunctionType::Func(*idx, ty),
-                                ))
-                            }
-                        }
-                        None => panic!("Only host functions can be imported"),
+        for idx in &self.host_func_types {
+            let ty = self.func_type(*idx).clone();
+            match &ty.host_function {
+                Some(hf) => {
+                    let hf_name = String::from(hf.name);
+                    if !self.imported_funcs.contains(&hf_name) {
+                        self.imported_funcs.push(hf_name);
+                        self.funcs.push((*idx as usize, ty.clone()));
+                        self.num_imports += 1;
+                        imports.push((
+                            String::from(hf.mod_name),
+                            Some(String::from(hf.name)),
+                            FunctionType::Func(*idx, ty),
+                        ))
                     }
                 }
-
-                Ok(true)
-            },
-        )?;
+                None => panic!("Only host functions can be imported"),
+            }
+        }
         if !imports.is_empty() || u.arbitrary()? {
             self.initial_sections.push(InitialSection::Import(imports));
         }

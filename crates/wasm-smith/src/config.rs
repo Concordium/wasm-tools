@@ -8,6 +8,7 @@ use super::*;
 pub struct HostFunction {
     pub mod_name: &'static str,
     pub name:     &'static str,
+    pub hf_index: usize, // index in the host-function vector
     pub params:   Vec<ValType>,
     pub result:   Option<ValType>,
 }
@@ -232,14 +233,16 @@ impl Config for InterpreterConfig {
             ("get_receive_sender", vec![I32], None),
             ("get_receive_owner", vec![I32], None),
             ("get_slot_time", Vec::new(), Some(I64)),
-        ]
-        .map(|(name, params, ret)| HostFunction {
-            mod_name: "concordium",
-            name,
-            params,
-            result: ret,
-        });
-        hosts.to_vec()
+        ];
+        let mut host_funs = Vec::new();
+        for (idx, (name, params, ret)) in hosts.iter().enumerate() {
+            host_funs.push(HostFunction {mod_name: "concordium",
+            name: name,
+            hf_index: idx,
+            params: params.to_vec(),
+            result: *ret,});
+        }
+        host_funs
     }
 
     fn max_imports(&self) -> usize { 20 }
