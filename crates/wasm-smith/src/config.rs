@@ -239,11 +239,13 @@ impl Config for InterpreterConfig {
         ];
         let mut host_funs = Vec::new();
         for (idx, (name, params, ret)) in hosts.iter().enumerate() {
-            host_funs.push(HostFunction {mod_name: "concordium",
-            name: name,
-            hf_index: idx,
-            params: params.to_vec(),
-            result: *ret,});
+            host_funs.push(HostFunction {
+                mod_name: "concordium",
+                name,
+                hf_index: idx,
+                params: params.to_vec(),
+                result: *ret,
+            });
         }
         host_funs
     }

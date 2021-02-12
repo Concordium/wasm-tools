@@ -133,7 +133,8 @@ where
     /// defined.
     implicit_instance_types: HashMap<String, usize>,
 
-    /// Keeping track of used host functions (because we disallow repeating imports)
+    /// Keeping track of used host functions (because we disallow repeating
+    /// imports)
     used_imports: HashSet<usize>,
 
     /// All types locally defined in this module (available in the type index
@@ -1239,10 +1240,17 @@ pub(crate) fn arbitrary_loop(
 
 static NAME_COUNTER: AtomicU8 = AtomicU8::new(0);
 
-// TODO (MRA) We should also test ascii strings of different lengths but that's lower priority.
+// TODO (MRA) We should also test ascii strings of different lengths but that's
+// lower priority.
 fn unique_string() -> Result<String> {
     let ctr = NAME_COUNTER.load(Ordering::SeqCst);
-    let mut name = String::from(if ctr % 2 == 0 { "init_" } else { "receive." });
+    let mut name = String::from(
+        if ctr % 2 == 0 {
+            "init_"
+        } else {
+            "receive."
+        },
+    );
     name.push_str(format!("{}", ctr).as_str());
     NAME_COUNTER.fetch_add(1, Ordering::SeqCst);
     Ok(name)
