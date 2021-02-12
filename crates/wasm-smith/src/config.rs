@@ -64,7 +64,7 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// The maximum number of functions to generate. Defaults to 100.  This
     /// includes imported functions.
-    fn max_funcs(&self) -> usize { 70 }
+    fn max_funcs(&self) -> usize { 100 }
 
     /// The minimum number of globals to generate. Defaults to 0.  This includes
     /// imported globals.
@@ -250,17 +250,19 @@ impl Config for InterpreterConfig {
         host_funs
     }
 
-    fn max_imports(&self) -> usize { 20 }
+    fn min_imports(&self) -> usize { 10 }
 
-    fn min_imports(&self) -> usize { 2 }
+    fn max_imports(&self) -> usize { self.host_functions().len() }
 
-    fn max_exports(&self) -> usize { 3 }
+    fn min_exports(&self) -> usize { 1 }
 
-    fn min_exports(&self) -> usize { 0 }
+    fn max_exports(&self) -> usize { 10 }
 
     fn min_types(&self) -> usize { 2 }
 
     fn min_funcs(&self) -> usize { 2 }
+
+    fn max_funcs(&self) -> usize { 50 }
 
     fn allow_start_export(&self) -> bool { false }
 
