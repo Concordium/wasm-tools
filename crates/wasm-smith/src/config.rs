@@ -64,7 +64,7 @@ pub trait Config: Arbitrary + Default + Clone {
 
     /// The maximum number of functions to generate. Defaults to 100.  This
     /// includes imported functions.
-    fn max_funcs(&self) -> usize { 100 }
+    fn max_funcs(&self) -> usize { 70 }
 
     /// The minimum number of globals to generate. Defaults to 0.  This includes
     /// imported globals.
@@ -249,11 +249,11 @@ impl Config for InterpreterConfig {
 
     fn min_imports(&self) -> usize { 2 }
 
-    fn max_exports(&self) -> usize { 100 }
+    fn max_exports(&self) -> usize { 3 }
 
-    fn min_exports(&self) -> usize { 1 }
+    fn min_exports(&self) -> usize { 0 }
 
-    fn min_types(&self) -> usize { 1 }
+    fn min_types(&self) -> usize { 2 }
 
     fn min_funcs(&self) -> usize { 2 }
 
@@ -261,7 +261,7 @@ impl Config for InterpreterConfig {
 
     fn allow_arbitrary_instr(&self) -> bool { false }
 
-    fn max_globals(&self) -> usize { 1024 }
+    fn max_globals(&self) -> usize { 100 }
 
     fn max_init_table_size(&self) -> u32 { 1_000 }
 
