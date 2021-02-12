@@ -260,7 +260,7 @@ impl Config for InterpreterConfig {
 
     fn min_types(&self) -> usize { 2 }
 
-    fn min_funcs(&self) -> usize { 2 }
+    fn min_funcs(&self) -> usize { self.min_imports() }
 
     fn max_funcs(&self) -> usize { 50 }
 
