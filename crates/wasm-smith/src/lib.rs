@@ -58,17 +58,16 @@ use std::{
     rc::Rc,
     str,
 };
-
-use arbitrary::{Arbitrary, Result, Unstructured};
-
-pub use config::{Config, DefaultConfig, InterpreterConfig};
-use ValType::{I32, I64};
-
-use crate::{code_builder::CodeBuilderAllocations, config::HostFunction};
 use std::{
     cmp::{max, min},
     sync::atomic::{AtomicU8, Ordering},
 };
+
+use arbitrary::{Arbitrary, Result, Unstructured};
+pub use config::{Config, DefaultConfig, InterpreterConfig};
+use ValType::{I32, I64};
+
+use crate::{code_builder::CodeBuilderAllocations, config::HostFunction};
 
 mod code_builder;
 mod config;
@@ -215,6 +214,7 @@ impl<C: Config> ConfiguredModule<C> {
 }
 
 impl<C: Config> Arbitrary for ConfiguredModule<C> {
+    #[cfg(not(fuzzing))]
     fn arbitrary(u: &mut Unstructured) -> Result<Self> {
         let mut module = ConfiguredModule::<C>::default();
         module.build(u, false)?;
@@ -237,6 +237,7 @@ impl MaybeInvalidModule {
 }
 
 impl Arbitrary for MaybeInvalidModule {
+    #[cfg(not(fuzzing))]
     fn arbitrary(u: &mut Unstructured) -> Result<Self> {
         let mut module = Module::default();
         module.inner.build(u, module.inner.config.allow_arbitrary_instr())?;

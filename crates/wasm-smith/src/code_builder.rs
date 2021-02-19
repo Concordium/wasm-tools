@@ -571,7 +571,7 @@ fn r#else<C: Config>(
     Ok(Instruction::Else)
 }
 
-#[inline]
+// // #[inline]
 fn end_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
     // Note: first control frame is the function return's control frame, which
     // does not have an associated `end`.
@@ -656,7 +656,7 @@ fn br_if<C: Config>(
     Ok(Instruction::BrIf(target as u32))
 }
 
-#[inline]
+// #[inline]
 fn br_table_valid<C: Config>(module: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
     if !builder.type_on_stack(ValType::I32) {
         return false;
@@ -720,7 +720,7 @@ fn r#return<C: Config>(
     Ok(Instruction::Return)
 }
 
-#[inline]
+// #[inline]
 fn call_valid<C: Config>(_: &ConfiguredModule<C>, builder: &mut CodeBuilder<C>) -> bool {
     builder.allocs.functions.keys().any(|k| builder.types_on_stack(k))
 }
