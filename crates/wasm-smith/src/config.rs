@@ -311,7 +311,7 @@ impl Arbitrary for InterpreterSwarmConfig {
 
         Ok(InterpreterSwarmConfig {
             max_types:                u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_imports:              u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_imports:              u.int_in_range(1..=MAX_MAXIMUM)?,
             max_funcs:                u.int_in_range(0..=MAX_MAXIMUM)?,
             max_globals:              u.int_in_range(0..=MAX_MAXIMUM)?,
             max_exports:              u.int_in_range(1..=MAX_MAXIMUM)?,
@@ -333,6 +333,8 @@ impl Arbitrary for InterpreterSwarmConfig {
 
 impl Config for InterpreterSwarmConfig {
     fn host_functions(&self) -> Vec<HostFunction> { host_functions() }
+
+    fn min_imports(&self) -> usize { 1 }
 
     fn min_exports(&self) -> usize { 1 }
 
