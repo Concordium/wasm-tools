@@ -54,17 +54,15 @@
 #![recursion_limit = "256"]
 
 use std::{
+    cmp::{max, min},
     collections::{HashMap, HashSet},
     rc::Rc,
     str,
-};
-use std::{
-    cmp::{max, min},
     sync::atomic::{AtomicU8, Ordering},
 };
 
 use arbitrary::{Arbitrary, Result, Unstructured};
-pub use config::{Config, DefaultConfig, InterpreterConfig};
+pub use config::{Config, DefaultConfig, InterpreterConfig, InterpreterSwarmConfig};
 use ValType::{I32, I64};
 
 use crate::{code_builder::CodeBuilderAllocations, config::HostFunction};
