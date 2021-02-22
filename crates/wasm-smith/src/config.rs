@@ -308,7 +308,7 @@ impl Arbitrary for InterpreterSwarmConfig {
 
         Ok(InterpreterSwarmConfig {
             max_globals:              u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_functions:            u.int_in_range(20..=MAX_MAXIMUM)?,
+            max_functions:            u.int_in_range(21..=MAX_MAXIMUM)?,
             max_element_segments:     u.int_in_range(0..=MAX_MAXIMUM)?,
             max_elements:             u.int_in_range(0..=MAX_MAXIMUM)?,
             max_data_segments:        u.int_in_range(0..=MAX_MAXIMUM)?,
@@ -341,6 +341,8 @@ impl Config for InterpreterSwarmConfig {
 
     fn min_funcs(&self) -> usize { self.min_imports() }
 
+    fn max_funcs(&self) -> usize { self.max_functions }
+
     fn allow_start_export(&self) -> bool { false }
 
     fn allow_arbitrary_instr(&self) -> bool { false }
@@ -352,8 +354,6 @@ impl Config for InterpreterSwarmConfig {
     fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false }
 
     fn max_globals(&self) -> usize { self.max_globals }
-
-    fn max_funcs(&self) -> usize { self.max_functions }
 
     fn max_element_segments(&self) -> usize { self.max_element_segments }
 
