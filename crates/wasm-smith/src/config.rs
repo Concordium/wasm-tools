@@ -286,11 +286,8 @@ impl Config for InterpreterConfig {
 /// Swarm testing
 #[derive(Clone, Debug, Default)]
 pub struct InterpreterSwarmConfig {
-    max_types:                usize,
-    max_imports:              usize,
-    max_funcs:                usize,
     max_globals:              usize,
-    max_exports:              usize,
+    max_functions:            usize,
     max_element_segments:     usize,
     max_elements:             usize,
     max_data_segments:        usize,
@@ -310,11 +307,8 @@ impl Arbitrary for InterpreterSwarmConfig {
         const MAX_MAXIMUM: usize = 1_000;
 
         Ok(InterpreterSwarmConfig {
-            max_types:                u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_imports:              u.int_in_range(1..=MAX_MAXIMUM)?,
-            max_funcs:                u.int_in_range(0..=MAX_MAXIMUM)?,
             max_globals:              u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_exports:              u.int_in_range(1..=MAX_MAXIMUM)?,
+            max_functions:            u.int_in_range(20..=MAX_MAXIMUM)?,
             max_element_segments:     u.int_in_range(0..=MAX_MAXIMUM)?,
             max_elements:             u.int_in_range(0..=MAX_MAXIMUM)?,
             max_data_segments:        u.int_in_range(0..=MAX_MAXIMUM)?,
@@ -332,13 +326,18 @@ impl Arbitrary for InterpreterSwarmConfig {
 }
 
 impl Config for InterpreterSwarmConfig {
+
     fn host_functions(&self) -> Vec<HostFunction> { host_functions() }
 
-    fn min_imports(&self) -> usize { 1 }
+    fn min_imports(&self) -> usize { 10 }
+
+    fn max_imports(&self) -> usize { self.host_functions().len() }
 
     fn min_exports(&self) -> usize { 1 }
 
-    fn max_imports(&self) -> usize { self.host_functions().len() }
+    fn max_exports(&self) -> usize { 10 }
+
+    fn min_types(&self) -> usize { 2 }
 
     fn min_funcs(&self) -> usize { self.min_imports() }
 
@@ -352,13 +351,9 @@ impl Config for InterpreterSwarmConfig {
 
     fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false }
 
-    fn max_types(&self) -> usize { self.max_types }
-
-    fn max_funcs(&self) -> usize { self.max_funcs }
-
     fn max_globals(&self) -> usize { self.max_globals }
 
-    fn max_exports(&self) -> usize { self.max_exports }
+    fn max_funcs(&self) -> usize { self.max_functions }
 
     fn max_element_segments(&self) -> usize { self.max_element_segments }
 
