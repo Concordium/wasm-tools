@@ -314,7 +314,7 @@ impl Arbitrary for InterpreterSwarmConfig {
             max_imports:              u.int_in_range(0..=MAX_MAXIMUM)?,
             max_funcs:                u.int_in_range(0..=MAX_MAXIMUM)?,
             max_globals:              u.int_in_range(0..=MAX_MAXIMUM)?,
-            max_exports:              u.int_in_range(0..=MAX_MAXIMUM)?,
+            max_exports:              u.int_in_range(1..=MAX_MAXIMUM)?,
             max_element_segments:     u.int_in_range(0..=MAX_MAXIMUM)?,
             max_elements:             u.int_in_range(0..=MAX_MAXIMUM)?,
             max_data_segments:        u.int_in_range(0..=MAX_MAXIMUM)?,
@@ -333,6 +333,8 @@ impl Arbitrary for InterpreterSwarmConfig {
 
 impl Config for InterpreterSwarmConfig {
     fn host_functions(&self) -> Vec<HostFunction> { host_functions() }
+
+    fn min_exports(&self) -> usize { 1 }
 
     fn max_imports(&self) -> usize { self.host_functions().len() }
 
