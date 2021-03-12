@@ -278,7 +278,7 @@ impl Config for InterpreterConfig {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])
     }
 
-    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false }
+    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { true }
 
     fn max_memory_pages(&self) -> u32 { 32 }
 }
@@ -351,7 +351,7 @@ impl Config for InterpreterSwarmConfig {
         Some(vec![(vec![ValType::I64], Some(ValType::I32))])
     }
 
-    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { false }
+    fn allow_globalget_in_elem_and_data_offsets(&self) -> bool { true }
 
     fn max_globals(&self) -> usize { self.max_globals }
 
