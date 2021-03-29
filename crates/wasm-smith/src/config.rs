@@ -213,7 +213,7 @@ fn host_functions() -> Vec<HostFunction> {
         ("get_parameter_size", Vec::new(), Some(I32)),
         ("get_parameter_section", vec![I32, I32, I32], Some(I32)),
         ("get_policy_section", vec![I32, I32, I32], Some(I32)),
-        ("log_event", vec![I32, I32], None),
+        ("log_event", vec![I32, I32], Some(I32)),
         ("load_state", vec![I32, I32, I32], Some(I32)),
         ("write_state", vec![I32, I32, I32], Some(I32)),
         ("resize_state", vec![I32], Some(I32)),
