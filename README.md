@@ -10,6 +10,8 @@
 
 # Tools included
 
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](https://github.com/Concordium/.github/blob/main/.github/CODE_OF_CONDUCT.md)
+
 This project is intended to house a number of tools related to the low-level
 workings of WebAssembly. The top-level crate here ties everything together but
 isn't currently intended for general use. Instead you probably want to take a
